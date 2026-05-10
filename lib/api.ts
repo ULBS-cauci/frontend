@@ -1,26 +1,28 @@
-import {config} from "./config";
-import {AskRequest} from "./types";
+import { config } from "./config";
+import { AskRequest } from "./types";
 
 const ASK_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions/ask`;
 
-export async function* askStream(query: string):AsyncIterable<string> {
-  const request:AskRequest = {query};
+export async function* askStream(query: string): AsyncIterable<string> {
+  const request: AskRequest = { query };
 
-  const response = await fetch (ASK_ENDPOINT,{
+  const response = await fetch(ASK_ENDPOINT, {
     method: "POST",
-    headers:{"Content-Type": "application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
   });
 
-  if(!response.ok|| !response.body) {
-    throw new Error(`Backend returned ${response.status}: ${await response.text()}`);
+  if (!response.ok || !response.body) {
+    throw new Error(
+      `Backend returned ${response.status}: ${await response.text()}`
+    );
   }
 
-  const reader  = response.body.getReader();
+  const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while(true){
+  while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
@@ -34,6 +36,6 @@ export async function* askStream(query: string):AsyncIterable<string> {
       const data = event.slice(6);
       if (data === "[DONE]") return;
       yield JSON.parse(data);
-  }
+    }
   }
 }

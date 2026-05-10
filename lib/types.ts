@@ -1,4 +1,4 @@
-export type MessageRole= "user" | "assistant" | "system";
+export type MessageRole = "user" | "assistant" | "system";
 
 export interface Message {
   role: MessageRole;
@@ -6,5 +6,5 @@ export interface Message {
 }
 
 export interface AskRequest {
-  query:string;
+  query: string;
 }
