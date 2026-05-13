@@ -2,20 +2,14 @@
 import { useState, useEffect, useRef } from "react";
 import { askStream } from "@/lib/api";
 import type { Message } from "@/lib/types";
-import { colors, fontSizes, radii } from "@/lib/tokens";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 
-interface Props {
-  initialQuery?: string;
-}
-
-export default function Chat({ initialQuery }: Props) {
+export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const didAutoSubmit = useRef(false);
 
   const handleAsk = async (query: string) => {
     setError(null);
@@ -48,62 +42,13 @@ export default function Chat({ initialQuery }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    if (initialQuery && !didAutoSubmit.current) {
-      didAutoSubmit.current = true;
-      handleAsk(initialQuery);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
-    <div
-      style={{
-        height: "100vh",
-        background: colors.bg,
-        color: colors.text,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 24px",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 860,
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          background: colors.bg,
-          border: "1px solid rgba(232,228,240,0.07)",
-          borderRadius: radii.lg,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: "40px 40px 24px",
-          }}
-        >
+    <div className="h-screen bg-[#0c0b10] text-[#e8e4f0] flex items-center justify-center px-6 py-10">
+      <div className="w-full max-w-4xl h-full flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto px-10 pt-10 pb-6">
           {messages.length === 0 ? (
-            <div
-              style={{
-                height: "100%",
-                display: "flex",
-                alignItems: "start",
-                justifyContent: "start",
-              }}
-            >
-              <p
-                style={{
-                  color: colors.textMuted,
-                  fontSize: fontSizes.lg-4,
-                  letterSpacing: "-0.01em",
-                }}
-              >
+            <div className="h-full flex items-start justify-start">
+              <p className="text-[rgba(232,228,240,0.45)] text-base tracking-[-0.01em]">
                 Our agent is ready to help.
               </p>
             </div>
@@ -111,15 +56,15 @@ export default function Chat({ initialQuery }: Props) {
             <>
               <MessageList messages={messages} />
               {loading && messages[messages.length - 1]?.content === "" && (
-                <p style={{ color: colors.textMuted }}>Thinking...</p>
+                <p className="text-[rgba(232,228,240,0.45)]">Thinking...</p>
               )}
-              {error && <p style={{ color: "#f87171" }}>Error: {error}</p>}
+              {error && <p className="text-[#f87171]">Error: {error}</p>}
               <div ref={bottomRef} />
             </>
           )}
         </div>
 
-        <div style={{ padding: "0 24px 28px" }}>
+        <div className="px-6 pb-7">
           <MessageInput onSubmit={handleAsk} disabled={loading} />
         </div>
       </div>

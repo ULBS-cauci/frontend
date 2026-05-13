@@ -1,6 +1,5 @@
 "use client";
-import { useState, FormEvent, KeyboardEvent } from "react";
-import { colors, radii } from "@/lib/tokens";
+import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from "react";
 
 interface Props {
   onSubmit: (query: string) => void;
@@ -10,12 +9,18 @@ interface Props {
 export default function MessageInput({ onSubmit, disabled }: Props) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!disabled) textareaRef.current?.focus();
+  }, [disabled]);
 
   const submit = () => {
     const trimmed = value.trim();
     if (!trimmed || disabled) return;
     onSubmit(trimmed);
     setValue("");
+    textareaRef.current?.focus();
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -31,58 +36,27 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
   };
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        borderRadius: radii.lg,
-        padding: 1.5,
-      }}
-    >
+    <div className="relative w-full rounded-[28px] p-[1.5px]">
       <div
-        className="glow-border"
-        style={{
-          position: "absolute",
-          inset: 0,
-          borderRadius: "inherit",
-          zIndex: 0,
-          animationDuration: focused ? "2s" : "4s",
-        }}
+        className="glow-border absolute inset-0 rounded-[inherit] z-0"
+        style={{ animationDuration: focused ? "2s" : "4s" }}
       />
 
       <form
         onSubmit={handleSubmit}
-        style={{
-          position: "relative",
-          zIndex: 1,
-          width: "100%",
-          background: colors.surface,
-          borderRadius: radii.lg - 2,
-          padding: "22px 24px",
-          boxShadow: "inset 0 2px 8px rgba(0,0,0,0.4)",
-        }}
+        className="relative z-[1] w-full bg-[#141219] rounded-[26px] px-6 py-[22px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.4)]"
       >
         <textarea
+          ref={textareaRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Ask a question…"
+          autoFocus
           disabled={disabled}
-          style={{
-            width: "100%",
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            resize: "none",
-            color: colors.text,
-            fontSize: 18,
-            lineHeight: 1.5,
-            fontFamily: "inherit",
-            height: 32,
-            opacity: disabled ? 0.5 : 1,
-          }}
+          className="w-full bg-transparent border-none outline-none resize-none text-[#e8e4f0] text-[18px] leading-[1.5] font-[inherit] h-12 disabled:opacity-50"
         />
       </form>
     </div>
