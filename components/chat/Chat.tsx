@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { askStream } from "@/lib/api";
 import type { Message } from "@/lib/types";
-import { colors } from "@/lib/tokens";
+import { colors, fontSizes, radii } from "@/lib/tokens";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 
@@ -16,7 +16,6 @@ export default function Chat({ initialQuery }: Props) {
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const didAutoSubmit = useRef(false);
-  const started = messages.length > 0;
 
   const handleAsk = async (query: string) => {
     setError(null);
@@ -46,10 +45,8 @@ export default function Chat({ initialQuery }: Props) {
   };
 
   useEffect(() => {
-    if (started) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, started]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   useEffect(() => {
     if (initialQuery && !didAutoSubmit.current) {
@@ -63,81 +60,68 @@ export default function Chat({ initialQuery }: Props) {
     <div
       style={{
         height: "100vh",
-        overflow: "hidden",
-        position: "relative",
         background: colors.bg,
         color: colors.text,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "40px 24px",
       }}
     >
-      {/* Messages */}
       <div
         style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 80,
-          overflowY: "auto",
-          padding: "40px 0 24px",
-          opacity: started ? 1 : 0,
-          transition: "opacity 0.4s ease",
+          width: "100%",
+          maxWidth: 860,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          background: colors.bg,
+          border: "1px solid rgba(232,228,240,0.07)",
+          borderRadius: radii.lg,
+          overflow: "hidden",
         }}
       >
-        <div style={{ maxWidth: 700, margin: "0 auto", padding: "0 16px" }}>
-          <MessageList messages={messages} />
-          {loading && messages[messages.length - 1]?.content === "" && (
-            <p style={{ color: colors.textMuted }}>Thinking...</p>
-          )}
-          {error && (
-            <p style={{ color: "#f87171" }}>Error: {error}</p>
-          )}
-          <div ref={bottomRef} />
-        </div>
-      </div>
-
-      {/* Centered placeholder when no messages */}
-      <div
-        style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          textAlign: "center",
-          opacity: started ? 0 : 1,
-          pointerEvents: started ? "none" : "auto",
-          transition: "opacity 0.3s ease",
-        }}
-      >
-        <h1
+        <div
           style={{
-            fontSize: 32,
-            marginBottom: 8,
-            color: colors.text,
-            fontWeight: 700,
-            letterSpacing: "-0.02em",
+            flex: 1,
+            overflowY: "auto",
+            padding: "40px 40px 24px",
           }}
         >
-          AI Tutor
-        </h1>
-        <p style={{ color: colors.textMuted }}>
-          Ask me anything about your courses.
-        </p>
-      </div>
+          {messages.length === 0 ? (
+            <div
+              style={{
+                height: "100%",
+                display: "flex",
+                alignItems: "start",
+                justifyContent: "start",
+              }}
+            >
+              <p
+                style={{
+                  color: colors.textMuted,
+                  fontSize: fontSizes.lg-4,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Our agent is ready to help.
+              </p>
+            </div>
+          ) : (
+            <>
+              <MessageList messages={messages} />
+              {loading && messages[messages.length - 1]?.content === "" && (
+                <p style={{ color: colors.textMuted }}>Thinking...</p>
+              )}
+              {error && <p style={{ color: "#f87171" }}>Error: {error}</p>}
+              <div ref={bottomRef} />
+            </>
+          )}
+        </div>
 
-      {/* Input */}
-      <div
-        style={{
-          position: "fixed",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "100%",
-          maxWidth: 700,
-          padding: "0 16px",
-          bottom: started ? 16 : "calc(50% - 60px)",
-          transition: "bottom 0.4s ease",
-        }}
-      >
-        <MessageInput onSubmit={handleAsk} disabled={loading} />
+        <div style={{ padding: "0 24px 28px" }}>
+          <MessageInput onSubmit={handleAsk} disabled={loading} />
+        </div>
       </div>
     </div>
   );
