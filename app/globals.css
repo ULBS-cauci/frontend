@@ -49,3 +49,40 @@ body {
   animation: spin-border 4s linear infinite;
 }
 
+@keyframes sidebar-glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+.sidebar-glow {
+  animation: sidebar-glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes flow-down {
+  0%   { top: -50%; }
+  100% { top: 150%; }
+}
+
+.glow-border-right {
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.glow-border-right::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  width: 2px;
+  height: 40%;
+  top: -40%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #7c6af7 25%,
+    #a78bfa 50%,
+    #c084fc 75%,
+    transparent 100%
+  );
+  animation: flow-down 4s linear infinite;
+}
+
