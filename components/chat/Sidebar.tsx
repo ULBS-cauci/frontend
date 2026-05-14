@@ -1,18 +1,14 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useChatContext } from "@/lib/chat-context";
 
 type Role = "student" | "professor" | "admin";
 
 interface Props {
   role?: Role;
 }
-
-const MOCK_HISTORY = [
-  { id: "1", title: "Ce cursuri am în semestrul 2?" },
-  { id: "2", title: "Cum calculez media?" },
-  { id: "3", title: "Cerințe proiect POO" },
-];
 
 function ToggleIcon() {
   return (
@@ -26,10 +22,21 @@ function ToggleIcon() {
 export default function Sidebar({ role = "professor" }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [search, setSearch] = useState("");
+  const pathname = usePathname();
+  const router = useRouter();
+  
+  const { conversations } = useChatContext();
 
-  const filtered = MOCK_HISTORY.filter((c) =>
-    c.title.toLowerCase().includes(search.toLowerCase())
+  const filtered = conversations.filter((c) =>
+    c.title?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleNewChat = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (pathname !== "/chat") {
+      router.push("/chat");
+    }
+  };
 
   return (
     <div
@@ -54,15 +61,15 @@ export default function Sidebar({ role = "professor" }: Props) {
 
         <div className={`flex flex-col flex-1 overflow-hidden transition-opacity ${isOpen ? "opacity-100 duration-300 delay-150" : "opacity-0 duration-150 pointer-events-none"}`}>
             <div className="p-3 pt-2 flex flex-col gap-1">
-              <Link
-                href="/chat"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-[#e8e4f0] text-sm hover:bg-[rgba(232,228,240,0.06)] transition-colors"
+              <button
+                onClick={handleNewChat}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-[#e8e4f0] text-sm hover:bg-[rgba(232,228,240,0.06)] transition-colors w-full"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
                 New chat
-              </Link>
+              </button>
 
               <div className="relative">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(232,228,240,0.35)]" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
