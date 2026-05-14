@@ -4,6 +4,9 @@ import { askStream } from "@/lib/api";
 import type { Message } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
+import {config} from "@/lib/config";
+
+const conversation_id = config.conversationId_stub;
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -21,7 +24,7 @@ export default function Chat() {
     ]);
 
     try {
-      for await (const chunk of askStream(query)) {
+      for await (const chunk of askStream(query, conversation_id)) {
         setMessages((prev) => {
           const next = [...prev];
           next[next.length - 1] = {

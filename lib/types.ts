@@ -1,3 +1,5 @@
+import { UUID } from "crypto";
+
 export type MessageRole = "user" | "assistant" | "system";
 
 export interface Message {
@@ -6,5 +8,6 @@ export interface Message {
 }
 
 export interface AskRequest {
-  query: string;
+  conversation_id: UUID;
+  content: string;
 }

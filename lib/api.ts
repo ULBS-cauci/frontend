@@ -1,10 +1,11 @@
+import { UUID } from "crypto";
 import { config } from "./config";
 import { AskRequest } from "./types";
 
 const ASK_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions/ask`;
 
-export async function* askStream(query: string): AsyncIterable<string> {
-  const request: AskRequest = { query };
+export async function* askStream(content: string, conversation_id: UUID): AsyncIterable<string> {
+  const request: AskRequest = { content, conversation_id };
 
   const response = await fetch(ASK_ENDPOINT, {
     method: "POST",
