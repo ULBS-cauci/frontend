@@ -1,8 +1,30 @@
 import { config } from "./config";
-import { AskRequest } from "./types";
+import { AskRequest, Course, CourseCreate, Material } from "./types";
 
 const ASK_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions/ask`;
+const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
 
+export async function getCourses(): Promise<Course[]> {
+  const res = await fetch(COURSES_ENDPOINT);
+  if (!res.ok) throw new Error(`Failed to fetch courses: ${res.status}`);
+  return res.json();
+}
+
+export async function createCourse(data: CourseCreate): Promise<Course> {
+  const res = await fetch(COURSES_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Failed to create course: ${res.status}`);
+  return res.json();
+}
+
+export async function getMaterials(courseId: string): Promise<Material[]> {
+  const res = await fetch(`${COURSES_ENDPOINT}/${courseId}/materials`);
+  if (!res.ok) throw new Error(`Failed to fetch materials: ${res.status}`);
+  return res.json();
+}
 export async function* askStream(query: string): AsyncIterable<string> {
   const request: AskRequest = { query };
 
