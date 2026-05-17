@@ -1,5 +1,5 @@
 import { config } from "./config";
-import { AskRequest, Course, CourseCreate, Material } from "./types";
+import { AskRequest, Course, CourseCreate, CourseUpdate, Material } from "./types";
 
 const ASK_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions/ask`;
 const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
@@ -18,6 +18,21 @@ export async function createCourse(data: CourseCreate): Promise<Course> {
   });
   if (!res.ok) throw new Error(`Failed to create course: ${res.status}`);
   return res.json();
+}
+
+export async function updateCourse(courseId: string, data: CourseUpdate): Promise<Course> {
+  const res = await fetch(`${COURSES_ENDPOINT}/${courseId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Failed to update course: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteCourse(courseId: string): Promise<void> {
+  const res = await fetch(`${COURSES_ENDPOINT}/${courseId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to delete course: ${res.status}`);
 }
 
 export async function getMaterials(courseId: string): Promise<Material[]> {

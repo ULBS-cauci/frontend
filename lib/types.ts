@@ -33,3 +33,8 @@ export interface CourseCreate {
   title: string;
   description?: string;
 }
+
+export interface CourseUpdate {
+  title?: string;
+  description?: string;
+}
