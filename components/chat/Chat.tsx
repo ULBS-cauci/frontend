@@ -13,15 +13,10 @@ interface ChatProps {
 
 export default function Chat({ conversationId }: ChatProps) {
   const router = useRouter();
-  const { refreshConversations } = useChatContext();
-
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { refreshConversations, messages, setMessages, activeConvId, setActiveConvId } = useChatContext();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  
-  // Track actual active conversation ID when we generate one dynamically.
-  const [activeConvId, setActiveConvId] = useState<string | undefined>(conversationId);
 
   // Initial load
   useEffect(() => {
@@ -79,8 +74,7 @@ export default function Chat({ conversationId }: ChatProps) {
       }
       
       if (isNewConv) {
-        await refreshConversations(); // Trigger sidebar update
-        // We use window.history.replaceState to change URL without triggering a component re-mount
+        await refreshConversations(); 
         window.history.replaceState(null, '', `/chat/${targetConvId}`);
       }
     } catch (err) {

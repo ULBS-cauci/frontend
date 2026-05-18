@@ -25,7 +25,7 @@ export default function Sidebar({ role = "professor" }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   
-  const { conversations } = useChatContext();
+  const { conversations, setMessages, setActiveConvId } = useChatContext();
 
   const filtered = conversations.filter((c) =>
     c.title?.toLowerCase().includes(search.toLowerCase())
@@ -33,6 +33,8 @@ export default function Sidebar({ role = "professor" }: Props) {
 
   const handleNewChat = (e: React.MouseEvent) => {
     e.preventDefault();
+    setMessages([]);
+    setActiveConvId(undefined);
     if (pathname !== "/chat") {
       router.push("/chat");
     }

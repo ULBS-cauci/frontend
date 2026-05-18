@@ -1,4 +1,3 @@
-import { UUID } from "crypto";
 import { config } from "./config";
 import { AskRequest, Conversation, MessagePublic } from "./types";
 

@@ -1,5 +1,3 @@
-import { UUID } from "crypto";
-
 export type MessageRole = "user" | "assistant" | "system";
 
 export interface Message {
