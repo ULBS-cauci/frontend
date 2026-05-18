@@ -53,7 +53,7 @@ export default function CoursesPage() {
       <div className="relative grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
         <button
           onClick={() => setShowModal(true)}
-          className="relative overflow-hidden rounded-3xl border border-dashed border-white/10 hover:border-white/20 transition-all duration-300 flex flex-col items-center justify-center gap-3 h-80 group hover:bg-white/[0.02] bg-[#0f0f14]"
+          className="relative overflow-hidden rounded-[40px] border border-dashed border-white/10 hover:border-white/20 transition-all duration-300 flex flex-col items-center justify-center gap-3 h-[280px] group hover:bg-white/[0.02] bg-[#0f0f14]"
         >
           <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
             <svg

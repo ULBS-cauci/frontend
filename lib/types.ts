@@ -5,6 +5,7 @@ export interface Course {
   title: string;
   description: string | null;
   held_by: string | null;
+  teacher_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -26,6 +27,7 @@ export interface Material {
   vector_namespace: string | null;
   uploaded_by: string | null;
   object_storage_key: string | null;
+  preview_url: string | null;
   created_at: string;
 }
 

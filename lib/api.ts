@@ -3,6 +3,21 @@ import { AskRequest, Course, CourseCreate, CourseUpdate, Material } from "./type
 
 const ASK_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions/ask`;
 const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
+const FILES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/files`;
+
+export async function uploadMaterial(courseId: string, file: File): Promise<Material> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${FILES_ENDPOINT}/upload?course_id=${courseId}`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `Upload failed: ${res.status}`);
+  }
+  return res.json();
+}
 
 export async function getCourses(): Promise<Course[]> {
   const res = await fetch(COURSES_ENDPOINT);

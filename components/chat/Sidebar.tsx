@@ -35,13 +35,8 @@ export default function Sidebar({ role = "professor" }: Props) {
     <div
       className={`relative shrink-0 h-screen transition-all duration-300 ${isOpen ? "w-60" : "w-14 p-[1.5px]"}`}
     >
-      {!isOpen && (
-        <div className="glow-border-right absolute inset-0 rounded-r-3xl z-0" />
-      )}
       <div
-        className={`relative z-[1] w-full h-full flex flex-col bg-[#0c0b10] rounded-r-3xl ${
-          isOpen ? "border-r border-t border-b border-[rgba(232,228,240,0.07)]" : ""
-        }`}
+        className="relative z-[1] w-full h-full flex flex-col bg-[#0c0b10] rounded-r-3xl border-r border-t border-b border-[rgba(232,228,240,0.07)]"
       >
         <div className={`flex pt-6 px-3 ${isOpen ? "justify-end" : "justify-center"}`}>
           <button
@@ -79,7 +74,6 @@ export default function Sidebar({ role = "professor" }: Props) {
               </div>
             </div>
 
-            {/* Nav items */}
             {(role === "professor" || role === "admin") && (
               <div className="px-3 flex flex-col gap-0.5">
                 <Link href="/courses" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[rgba(232,228,240,0.75)] hover:bg-[rgba(232,228,240,0.06)] transition-colors">
@@ -107,7 +101,6 @@ export default function Sidebar({ role = "professor" }: Props) {
               </div>
             )}
 
-            {/* History */}
             <div className="flex-1 overflow-y-auto px-3">
               <div className="mt-2">
                 <p className="text-[rgba(232,228,240,0.35)] text-xs px-3 py-2 uppercase tracking-widest">
@@ -133,7 +126,6 @@ export default function Sidebar({ role = "professor" }: Props) {
               </div>
             </div>
 
-            {/* User */}
             <div className="p-3 border-t border-[rgba(232,228,240,0.07)] flex flex-col gap-1">
               <div className="flex items-center gap-2 px-3 py-2">
                 <div className="w-7 h-7 rounded-full bg-[#7c6af7] flex items-center justify-center text-xs text-white font-medium shrink-0">
@@ -141,14 +133,6 @@ export default function Sidebar({ role = "professor" }: Props) {
                 </div>
                 <span className="text-sm text-[rgba(232,228,240,0.75)] truncate">Denisa Ionescu</span>
               </div>
-              <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[rgba(232,228,240,0.45)] hover:text-[#e8e4f0] hover:bg-[rgba(232,228,240,0.06)] transition-colors w-full text-left">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-                Logout
-              </button>
             </div>
         </div>
       </div>
