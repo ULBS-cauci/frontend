@@ -26,6 +26,8 @@ export default function CoursePage() {
       const mats = await getMaterials(id);
       setMaterials(mats);
       setSelected(mats.find((m) => m.id === uploaded.id) ?? mats[mats.length - 1]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
     }

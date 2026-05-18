@@ -21,26 +21,34 @@ export default function Chat({ conversationId }: ChatProps) {
   // Initial load
   useEffect(() => {
     setActiveConvId(conversationId);
-    
-    if (conversationId) {
-      setLoading(true);
-      getMessages(conversationId)
-        .then((fetchedMessages) => {
-          const formatted = fetchedMessages.map((m) => ({
-            role: m.sender.toLowerCase() === "user" ? "user" : "assistant",
-            content: m.content
-          })) as Message[];
-          setMessages(formatted);
-          setLoading(false);
-        })
-        .catch((err) => {
-          setError(err instanceof Error ? err.message : "Unknown error loading messages");
-          setLoading(false);
-        });
-    } else {
+
+    if (!conversationId) {
       setMessages([]);
+      return;
     }
-  }, [conversationId]);
+
+    let cancelled = false;
+    setLoading(true);
+
+    getMessages(conversationId)
+      .then((fetchedMessages) => {
+        if (cancelled) return;
+        const formatted = fetchedMessages.map((m) => ({
+          role: m.sender.toLowerCase() === "user" ? "user" : m.sender.toLowerCase() === "system" ? "system" : "assistant",
+          content: m.content,
+        })) as Message[];
+        setMessages(formatted);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Unknown error loading messages");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [conversationId, setActiveConvId, setMessages]);
 
   const handleAsk = async (query: string) => {
     setError(null);
@@ -65,17 +73,19 @@ export default function Chat({ conversationId }: ChatProps) {
       for await (const chunk of askStream(query, targetConvId)) {
         setMessages((prev) => {
           const next = [...prev];
+          const last = next[next.length - 1];
+          if (!last) return next;
           next[next.length - 1] = {
             role: "assistant",
-            content: next[next.length - 1].content + chunk,
+            content: last.content + chunk,
           };
           return next;
         });
       }
       
       if (isNewConv) {
-        await refreshConversations(); 
-        window.history.replaceState(null, '', `/chat/${targetConvId}`);
+        await refreshConversations();
+        router.replace(`/chat/${targetConvId}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
