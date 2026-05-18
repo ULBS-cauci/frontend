@@ -1,9 +1,34 @@
 import { config } from "./config";
-import { AskRequest, Course, CourseCreate, CourseUpdate, Material } from "./types";
+import { AskRequest, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material } from "./types";
 
-const ASK_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions/ask`;
+const SESSIONS_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions`;
+const ASK_ENDPOINT = `${SESSIONS_ENDPOINT}/ask`;
 const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
 const FILES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/files`;
+
+export async function getConversations(): Promise<Conversation[]> {
+  const response = await fetch(SESSIONS_ENDPOINT);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch conversations: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function createConversation(): Promise<Conversation> {
+  const response = await fetch(SESSIONS_ENDPOINT, { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`Failed to create conversation: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function getMessages(conversationId: string): Promise<MessagePublic[]> {
+  const response = await fetch(`${SESSIONS_ENDPOINT}/${conversationId}/messages`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch messages: ${response.status}`);
+  }
+  return response.json();
+}
 
 export async function uploadMaterial(courseId: string, file: File): Promise<Material> {
   const form = new FormData();
@@ -55,8 +80,9 @@ export async function getMaterials(courseId: string): Promise<Material[]> {
   if (!res.ok) throw new Error(`Failed to fetch materials: ${res.status}`);
   return res.json();
 }
-export async function* askStream(query: string): AsyncIterable<string> {
-  const request: AskRequest = { query };
+
+export async function* askStream(content: string, conversation_id: string): AsyncIterable<string> {
+  const request: AskRequest = { content, conversation_id };
 
   const response = await fetch(ASK_ENDPOINT, {
     method: "POST",
