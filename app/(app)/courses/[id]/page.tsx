@@ -164,6 +164,7 @@ export default function CoursePage() {
                 src={selected.preview_url}
                 className="flex-1 w-full border-0"
                 title={selected.file_name}
+                referrerPolicy="no-referrer"
               />
             </>
           ) : (
