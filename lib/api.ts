@@ -33,7 +33,7 @@ export async function getMessages(conversationId: string): Promise<MessagePublic
 export async function uploadMaterial(courseId: string, file: File): Promise<Material> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${FILES_ENDPOINT}/upload?course_id=${courseId}`, {
+  const res = await fetch(`${FILES_ENDPOINT}/upload?course_id=${encodeURIComponent(courseId)}`, {
     method: "POST",
     body: form,
   });

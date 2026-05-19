@@ -1,7 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useRef } from "react";
 import { getCourses, getMaterials, uploadMaterial } from "@/lib/api";
 import type { Course, Material } from "@/lib/types";
 
