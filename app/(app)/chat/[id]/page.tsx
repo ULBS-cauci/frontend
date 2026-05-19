@@ -1,9 +1,11 @@
+import { use } from "react";
 import Chat from "@/components/chat/Chat";
 
 interface ChatPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default function ChatPage({ params }: ChatPageProps) {
-  return <Chat conversationId={params.id} />;
+  const { id } = use(params);
+  return <Chat conversationId={id} />;
 }
