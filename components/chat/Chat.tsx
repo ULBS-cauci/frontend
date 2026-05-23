@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { askStream, getMessages, createConversation } from "@/lib/api";
-import type { Message } from "@/lib/types";
+import type { Message, MessagePublic, MessageRole } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import { useChatContext } from "@/lib/chat-context";
@@ -33,10 +33,15 @@ export default function Chat({ conversationId }: ChatProps) {
     getMessages(conversationId)
       .then((fetchedMessages) => {
         if (cancelled) return;
-        const formatted = fetchedMessages.map((m) => ({
-          role: m.sender.toLowerCase() === "user" ? "user" : m.sender.toLowerCase() === "system" ? "system" : "assistant",
+        const senderToRole: Record<MessagePublic["sender"], MessageRole> = {
+          User: "user",
+          System: "system",
+          AI: "assistant",
+        };
+        const formatted: Message[] = fetchedMessages.map((m) => ({
+          role: senderToRole[m.sender],
           content: m.content,
-        })) as Message[];
+        }));
         setMessages(formatted);
       })
       .catch((err) => {

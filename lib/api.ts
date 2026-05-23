@@ -50,6 +50,12 @@ export async function getCourses(): Promise<Course[]> {
   return res.json();
 }
 
+export async function getCourse(courseId: string): Promise<Course> {
+  const res = await fetch(`${COURSES_ENDPOINT}/${courseId}`);
+  if (!res.ok) throw new Error(`Failed to fetch course: ${res.status}`);
+  return res.json();
+}
+
 export async function createCourse(data: CourseCreate): Promise<Course> {
   const res = await fetch(COURSES_ENDPOINT, {
     method: "POST",

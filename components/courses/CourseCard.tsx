@@ -24,6 +24,7 @@ export default function CourseCard({ course, onDelete, onUpdate }: CourseCardPro
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -38,9 +39,12 @@ export default function CourseCard({ course, onDelete, onUpdate }: CourseCardPro
   async function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
     setDeleting(true);
+    setError(null);
     try {
       await deleteCourse(course.id);
       onDelete(course.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete course");
     } finally {
       setDeleting(false);
       setMenuOpen(false);
@@ -117,10 +121,14 @@ export default function CourseCard({ course, onDelete, onUpdate }: CourseCardPro
             )}
           </div>
 
+          {error && (
+            <p className="mt-3 text-[13px] text-[#f87171]">{error}</p>
+          )}
+
           <div className="mt-auto">
             <button
               onClick={(e) => { e.stopPropagation(); router.push(`/courses/${course.id}`); }}
-              className="px-3.5 py-1.5 rounded-full text-[14px] text-white/65 border border-white/10 hover:border-white/20 hover:text-white transition-colors bg-white/[0.04]"
+              className="px-3.5 py-1.5 rounded-full text-[14px] text-white/65 border border-white/10 hover:border-white/20 hover:text-white transition-colors bg-white/4"
             >
               See materials →
             </button>

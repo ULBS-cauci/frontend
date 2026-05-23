@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getCourses, getMaterials, uploadMaterial } from "@/lib/api";
+import { getCourse, getMaterials, uploadMaterial } from "@/lib/api";
 import type { Course, Material } from "@/lib/types";
 
 export default function CoursePage() {
@@ -33,9 +33,9 @@ export default function CoursePage() {
   }
 
   useEffect(() => {
-    Promise.all([getCourses(), getMaterials(id)])
-      .then(([courses, mats]) => {
-        setCourse(courses.find((c) => c.id === id) ?? null);
+    Promise.all([getCourse(id), getMaterials(id)])
+      .then(([fetchedCourse, mats]) => {
+        setCourse(fetchedCourse);
         setMaterials(mats);
         if (mats.length > 0) setSelected(mats[0]);
       })
@@ -164,6 +164,7 @@ export default function CoursePage() {
                 className="flex-1 w-full border-0"
                 title={selected.file_name}
                 referrerPolicy="no-referrer"
+                sandbox="allow-scripts allow-same-origin"
               />
             </>
           ) : (
