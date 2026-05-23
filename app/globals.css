@@ -49,3 +49,13 @@ body {
   animation: spin-border 4s linear infinite;
 }
 
+@keyframes sidebar-glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+.sidebar-glow {
+  animation: sidebar-glow-pulse 3s ease-in-out infinite;
+}
+
+
