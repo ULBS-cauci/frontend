@@ -6,7 +6,6 @@ const ASK_ENDPOINT = `${SESSIONS_ENDPOINT}/ask`;
 const ATTACHMENT_UPLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments/upload`;
 const ATTACHMENT_DOWNLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments`;
 const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
-const FILES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/files`;
 
 export function getAttachmentDownloadUrl(attachmentId: string): string {
   return `${ATTACHMENT_DOWNLOAD_ENDPOINT}/${encodeURIComponent(attachmentId)}`;
@@ -50,7 +49,7 @@ export async function uploadAttachment(file: File): Promise<AttachmentPublic> {
 export async function uploadMaterial(courseId: string, file: File): Promise<Material> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${FILES_ENDPOINT}/upload?course_id=${encodeURIComponent(courseId)}`, {
+  const res = await fetch(`${COURSES_ENDPOINT}/${encodeURIComponent(courseId)}/materials`, {
     method: "POST",
     body: form,
   });
