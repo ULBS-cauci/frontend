@@ -11,7 +11,7 @@ export default function Chat() {
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const handleAsk = async (query: string) => {
+  const handleAsk = async (query: string, attachmentIds: string[] = []) => {
     setError(null);
     setLoading(true);
     setMessages((prev) => [
@@ -21,7 +21,7 @@ export default function Chat() {
     ]);
 
     try {
-      for await (const chunk of askStream(query)) {
+      for await (const chunk of askStream(query, attachmentIds)) {
         setMessages((prev) => {
           const next = [...prev];
           next[next.length - 1] = {

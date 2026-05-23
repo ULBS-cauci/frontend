@@ -1,10 +1,25 @@
 import { config } from "./config";
-import { AskRequest } from "./types";
+import { AskRequest, Attachment } from "./types";
 
 const ASK_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions/ask`;
+const ATTACHMENT_UPLOAD_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions/attachments/upload`;
 
-export async function* askStream(query: string): AsyncIterable<string> {
-  const request: AskRequest = { query };
+export async function uploadAttachment(file: File): Promise<Attachment> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(ATTACHMENT_UPLOAD_ENDPOINT, { method: "POST", body: form });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Upload failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+export async function* askStream(query: string, attachmentIds: string[] = []): AsyncIterable<string> {
+  const request: AskRequest = {
+    query,
+    ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
+  };
 
   const response = await fetch(ASK_ENDPOINT, {
     method: "POST",
