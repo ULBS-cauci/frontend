@@ -44,7 +44,7 @@ export interface MessagePublic {
   conversation_id: string;
   sender: "User" | "System" | "AI";
   content: string;
-  output_type_requested: string | null;
+  output_format_id: string | null;
   created_at: string;
   attachments: AttachmentPublic[];
 }
