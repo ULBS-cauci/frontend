@@ -57,7 +57,6 @@ export interface Material {
   vector_namespace: string | null;
   uploaded_by: string | null;
   object_storage_key: string | null;
-  preview_url: string | null;
   created_at: string;
 }
 

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getCourse, getMaterials, uploadMaterial } from "@/lib/api";
+import { config } from "@/lib/config";
 import type { Course, Material } from "@/lib/types";
 
 export default function CoursePage() {
@@ -148,7 +149,7 @@ export default function CoursePage() {
 
         <div className="flex-1 rounded-3xl p-[1px] shrink-0 flex flex-col" style={{ background: "linear-gradient(135deg, rgba(124,106,247,0.5) 0%, rgba(96,165,250,0.2) 50%, rgba(124,106,247,0.1) 100%)" }}>
         <div className="flex-1 rounded-[23px] overflow-hidden bg-[#0a0910] flex flex-col">
-          {selected && selected.preview_url ? (
+          {selected && selected.object_storage_key ? (
             <>
               <div className="px-5 py-3.5 border-b border-white/[0.06] flex items-center gap-3 shrink-0">
                 <div className="w-6 h-6 rounded-md bg-[#7c6af7]/15 flex items-center justify-center">
@@ -160,11 +161,9 @@ export default function CoursePage() {
               </div>
               <iframe
                 key={selected.id}
-                src={selected.preview_url}
+                src={`${config.apiUrl}${config.apiPrefix}/courses/${selected.course_id}/materials/${selected.id}/preview`}
                 className="flex-1 w-full border-0"
                 title={selected.file_name}
-                referrerPolicy="no-referrer"
-                sandbox="allow-scripts allow-same-origin"
               />
             </>
           ) : (
