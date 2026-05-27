@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { askStream, getMessages, createConversation } from "@/lib/api";
+import { askStream, regenerateStream, getMessages, createConversation } from "@/lib/api";
 import type { Message, MessagePublic, MessageRole } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
@@ -99,6 +99,41 @@ export default function Chat({ conversationId }: ChatProps) {
     }
   };
 
+  const handleRegenerate = async () => {
+    if (!activeConvId) return;
+    setError(null);
+    setLoading(true);
+    setMessages((prev) => {
+      const next = [...prev];
+      const last = next[next.length - 1];
+      if (last?.role !== "assistant") return prev;
+      next[next.length - 1] = { role: "assistant", content: "" };
+      return next;
+    });
+    try {
+      for await (const chunk of regenerateStream(activeConvId)) {
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (!last) return next;
+          next[next.length - 1] = { role: "assistant", content: last.content + chunk };
+          return next;
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error during regeneration");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const canRegenerate =
+    !loading &&
+    !!activeConvId &&
+    messages.length > 0 &&
+    messages[messages.length - 1].role === "assistant" &&
+    messages[messages.length - 1].content !== "";
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -115,7 +150,7 @@ export default function Chat({ conversationId }: ChatProps) {
             </div>
           ) : (
             <>
-              <MessageList messages={messages} />
+              <MessageList messages={messages} onRegenerate={canRegenerate ? handleRegenerate : undefined} />
               {loading && messages[messages.length - 1]?.content === "" && (
                 <p className="text-[rgba(232,228,240,0.45)]">Thinking...</p>
               )}
