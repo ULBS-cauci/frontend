@@ -163,12 +163,12 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
           </div>
         )}
 
-        <div className="flex items-end gap-3">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || isUploading}
-            className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed pb-1"
+            className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="Attach file"
           >
             {isUploading ? (
@@ -190,23 +190,30 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             onChange={handleFileChange}
           />
 
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            placeholder="Ask a question…"
-            autoFocus
-            disabled={disabled}
-            className="flex-1 bg-transparent border-none outline-none resize-none text-[#e8e4f0] text-[18px] leading-[1.5] font-[inherit] h-12 disabled:opacity-50"
-          />
+          <div className="relative flex-1 h-12 flex items-center">
+            {value === "" && (
+              <span className="absolute left-0 inset-y-0 flex items-center text-[rgba(232,228,240,0.35)] text-[18px] leading-[1.5] pointer-events-none select-none">
+                Ask a question…
+              </span>
+            )}
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              rows={1}
+              autoFocus
+              disabled={disabled}
+              className="w-full bg-transparent border-none outline-none resize-none text-[#e8e4f0] text-[18px] leading-[1.5] font-[inherit] disabled:opacity-50"
+            />
+          </div>
 
           <button
             type="submit"
             disabled={!canSubmit}
-            className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed pb-1"
+            className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             aria-label="Send"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
