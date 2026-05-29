@@ -10,14 +10,24 @@ export interface Course {
   updated_at: string;
 }
 
+export interface AttachmentPublic {
+  id: string;
+  file_name: string;
+  created_at: string;
+}
+
+export type Attachment = AttachmentPublic;
+
 export interface Message {
   role: MessageRole;
   content: string;
+  attachments?: AttachmentPublic[];
 }
 
 export interface AskRequest {
-  conversation_id: string;
   content: string;
+  conversation_id?: string;
+  attachment_ids?: string[];
 }
 
 export interface Conversation {
@@ -36,6 +46,7 @@ export interface MessagePublic {
   content: string;
   output_type_requested: string | null;
   created_at: string;
+  attachments: AttachmentPublic[];
 }
 
 export interface Material {
