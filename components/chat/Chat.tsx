@@ -15,6 +15,7 @@ export default function Chat({ conversationId }: ChatProps) {
   const router = useRouter();
   const { refreshConversations, messages, setMessages, activeConvId, setActiveConvId } = useChatContext();
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -75,17 +76,22 @@ export default function Chat({ conversationId }: ChatProps) {
         isNewConv = true;
       }
 
-      for await (const chunk of askStream(query, targetConvId)) {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (!last) return next;
-          next[next.length - 1] = {
-            role: "assistant",
-            content: last.content + chunk,
-          };
-          return next;
-        });
+      for await (const event of askStream(query, targetConvId)) {
+        if (event.type === "status") {
+          setStatusMessage(event.message);
+        } else if (event.type === "chunk") {
+          setStatusMessage(null);
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            next[next.length - 1] = {
+              role: "assistant",
+              content: last.content + event.content,
+            };
+            return next;
+          });
+        }
       }
       
       if (isNewConv) {
@@ -96,6 +102,7 @@ export default function Chat({ conversationId }: ChatProps) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
+      setStatusMessage(null);
     }
   };
 
@@ -116,8 +123,13 @@ export default function Chat({ conversationId }: ChatProps) {
           ) : (
             <>
               <MessageList messages={messages} />
-              {loading && messages[messages.length - 1]?.content === "" && (
-                <p className="text-[rgba(232,228,240,0.45)]">Thinking...</p>
+              {loading && (messages[messages.length - 1]?.content === "" || statusMessage) && (
+                <div className="mt-1 pl-3 border-l-2 border-[rgba(167,139,250,0.5)] flex items-center gap-2.5">
+                  <span className="w-2 h-2 rounded-full bg-[rgba(167,139,250,0.7)] animate-pulse shrink-0" />
+                  <span className="text-sm text-[rgba(232,228,240,0.7)] italic">
+                    {statusMessage ?? "Thinking..."}
+                  </span>
+                </div>
               )}
               {error && <p className="text-[#f87171] bg-[#2a1111] p-3 rounded-lg border border-[#f87171]/20 my-4">Error: {error}</p>}
               <div ref={bottomRef} />
