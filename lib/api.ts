@@ -1,10 +1,16 @@
 import { config } from "./config";
-import { AskRequest, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material } from "./types";
+import { AskRequest, AttachmentPublic, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material } from "./types";
 
 const SESSIONS_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions`;
 const ASK_ENDPOINT = `${SESSIONS_ENDPOINT}/ask`;
+const ATTACHMENT_UPLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments/upload`;
+const ATTACHMENT_DOWNLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments`;
 const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
 const FILES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/files`;
+
+export function getAttachmentDownloadUrl(attachmentId: string): string {
+  return `${ATTACHMENT_DOWNLOAD_ENDPOINT}/${encodeURIComponent(attachmentId)}`;
+}
 
 export async function getConversations(): Promise<Conversation[]> {
   const response = await fetch(SESSIONS_ENDPOINT);
@@ -28,6 +34,17 @@ export async function getMessages(conversationId: string): Promise<MessagePublic
     throw new Error(`Failed to fetch messages: ${response.status}`);
   }
   return response.json();
+}
+
+export async function uploadAttachment(file: File): Promise<AttachmentPublic> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(ATTACHMENT_UPLOAD_ENDPOINT, { method: "POST", body: form });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Upload failed (${res.status}): ${text}`);
+  }
+  return res.json();
 }
 
 export async function uploadMaterial(courseId: string, file: File): Promise<Material> {
@@ -87,8 +104,44 @@ export async function getMaterials(courseId: string): Promise<Material[]> {
   return res.json();
 }
 
-export async function* askStream(content: string, conversation_id: string): AsyncIterable<string> {
-  const request: AskRequest = { content, conversation_id };
+export async function* regenerateStream(conversationId: string): AsyncIterable<string> {
+  const response = await fetch(`${SESSIONS_ENDPOINT}/${conversationId}/regenerate`, {
+    method: "POST",
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Backend returned ${response.status}: ${await response.text()}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+    for (const event of events) {
+      if (!event.startsWith("data: ")) continue;
+      const data = event.slice(6);
+      if (data === "[DONE]") return;
+      yield JSON.parse(data);
+    }
+  }
+}
+
+export async function* askStream(
+  content: string,
+  conversation_id: string,
+  attachmentIds: string[] = [],
+): AsyncIterable<string> {
+  const request: AskRequest = {
+    content,
+    conversation_id,
+    ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
+  };
 
   const response = await fetch(ASK_ENDPOINT, {
     method: "POST",
