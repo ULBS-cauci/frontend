@@ -1,11 +1,16 @@
 import { config } from "./config";
-import { AskRequest, Attachment, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material } from "./types";
+import { AskRequest, AttachmentPublic, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material } from "./types";
 
 const SESSIONS_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions`;
 const ASK_ENDPOINT = `${SESSIONS_ENDPOINT}/ask`;
 const ATTACHMENT_UPLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments/upload`;
+const ATTACHMENT_DOWNLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments`;
 const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
 const FILES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/files`;
+
+export function getAttachmentDownloadUrl(attachmentId: string): string {
+  return `${ATTACHMENT_DOWNLOAD_ENDPOINT}/${encodeURIComponent(attachmentId)}`;
+}
 
 export async function getConversations(): Promise<Conversation[]> {
   const response = await fetch(SESSIONS_ENDPOINT);
@@ -31,7 +36,7 @@ export async function getMessages(conversationId: string): Promise<MessagePublic
   return response.json();
 }
 
-export async function uploadAttachment(file: File): Promise<Attachment> {
+export async function uploadAttachment(file: File): Promise<AttachmentPublic> {
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(ATTACHMENT_UPLOAD_ENDPOINT, { method: "POST", body: form });

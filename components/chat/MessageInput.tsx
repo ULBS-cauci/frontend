@@ -1,17 +1,18 @@
 "use client";
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { uploadAttachment } from "@/lib/api";
+import type { AttachmentPublic } from "@/lib/types";
 
 interface PendingAttachment {
   clientKey: string;
   fileName: string;
   status: "uploading" | "ready" | "error";
-  attachmentId?: string;
+  attachment?: AttachmentPublic;
   errorMessage?: string;
 }
 
 interface Props {
-  onSubmit: (query: string, attachmentIds: string[]) => void;
+  onSubmit: (query: string, attachmentIds: string[], attachments: AttachmentPublic[]) => void;
   disabled?: boolean;
 }
 
@@ -75,14 +76,17 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
   }, [disabled]);
 
   const isUploading = pendingAttachments.some((a) => a.status === "uploading");
-  const readyIds = pendingAttachments.filter((a) => a.status === "ready").map((a) => a.attachmentId!);
+  const readyAttachments = pendingAttachments
+    .filter((a) => a.status === "ready")
+    .map((a) => a.attachment!);
+  const readyIds = readyAttachments.map((a) => a.id);
 
   const canSubmit =
     (value.trim() !== "" || readyIds.length > 0) && !disabled && !isUploading;
 
   const submit = () => {
     if (!canSubmit) return;
-    onSubmit(value.trim(), readyIds);
+    onSubmit(value.trim(), readyIds, readyAttachments);
     setValue("");
     setPendingAttachments([]);
     textareaRef.current?.focus();
@@ -121,7 +125,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             setPendingAttachments((prev) =>
               prev.map((p) =>
                 p.clientKey === newSlots[i].clientKey
-                  ? { ...p, status: "ready", attachmentId: attachment.id }
+                  ? { ...p, status: "ready", attachment }
                   : p
               )
             );
@@ -186,6 +190,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             ref={fileInputRef}
             type="file"
             multiple
+            accept=".pdf,application/pdf"
             className="hidden"
             onChange={handleFileChange}
           />
