@@ -106,7 +106,8 @@ export async function getMaterials(courseId: string): Promise<Material[]> {
 
 export type StreamEvent =
   | { type: "status"; message: string }
-  | { type: "chunk"; content: string };
+  | { type: "chunk"; content: string }
+  | { type: "error"; message: string };
 
 async function* readStream(response: Response): AsyncIterable<StreamEvent> {
   const reader = response.body!.getReader();
@@ -131,6 +132,8 @@ async function* readStream(response: Response): AsyncIterable<StreamEvent> {
         yield { type: "status", message: parsed.message };
       } else if (parsed.type === "chunk") {
         yield { type: "chunk", content: parsed.content };
+      } else if (parsed.type === "error") {
+        throw new Error(parsed.message);
       }
     }
   }
