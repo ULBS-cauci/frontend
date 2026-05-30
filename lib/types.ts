@@ -19,6 +19,7 @@ export interface AttachmentPublic {
 export type Attachment = AttachmentPublic;
 
 export interface Message {
+  id?: string;
   role: MessageRole;
   content: string;
   attachments?: AttachmentPublic[];

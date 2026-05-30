@@ -98,7 +98,7 @@ export default function CoursePage() {
                 </svg>
               )}
             </button>
-            <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
+            <input ref={fileInputRef} type="file" accept=".pdf,.docx,.pptx,.png,.jpg,.jpeg" className="hidden" onChange={handleFileChange} />
           </div>
 
           <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1">
@@ -159,12 +159,25 @@ export default function CoursePage() {
                 </div>
                 <span className="text-sm text-white/70 truncate">{selected.file_name}</span>
               </div>
-              <iframe
-                key={selected.id}
-                src={`${config.apiUrl}${config.apiPrefix}/courses/${selected.course_id}/materials/${selected.id}/preview`}
-                className="flex-1 w-full border-0"
-                title={selected.file_name}
-              />
+              {selected.file_type?.toLowerCase() === "pdf" ? (
+                <iframe
+                  key={selected.id}
+                  src={`${config.apiUrl}${config.apiPrefix}/courses/${selected.course_id}/materials/${selected.id}/preview`}
+                  className="flex-1 w-full border-0"
+                  title={selected.file_name}
+                />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-white/25 px-6 text-center">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  {/* Inline preview is only wired up for PDFs in this branch; richer
+                      preview/download for other types is handled elsewhere. */}
+                  <p className="text-sm">
+                    Preview unavailable for {selected.file_type?.toUpperCase() ?? "this file type"}.
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-white/15">

@@ -12,7 +12,7 @@ export function getAttachmentDownloadUrl(attachmentId: string): string {
 }
 
 export async function getConversations(): Promise<Conversation[]> {
-  const response = await fetch(SESSIONS_ENDPOINT);
+  const response = await fetch(`${SESSIONS_ENDPOINT}/`);
   if (!response.ok) {
     throw new Error(`Failed to fetch conversations: ${response.status}`);
   }
@@ -20,7 +20,7 @@ export async function getConversations(): Promise<Conversation[]> {
 }
 
 export async function createConversation(): Promise<Conversation> {
-  const response = await fetch(SESSIONS_ENDPOINT, { method: "POST" });
+  const response = await fetch(`${SESSIONS_ENDPOINT}/`, { method: "POST" });
   if (!response.ok) {
     throw new Error(`Failed to create conversation: ${response.status}`);
   }
@@ -60,8 +60,8 @@ export async function uploadMaterial(courseId: string, file: File): Promise<Mate
   return res.json();
 }
 
-export async function getCourses(): Promise<Course[]> {
-  const res = await fetch(COURSES_ENDPOINT);
+export async function getCourses(mine = false): Promise<Course[]> {
+  const res = await fetch(`${COURSES_ENDPOINT}/${mine ? "?mine=true" : ""}`);
   if (!res.ok) throw new Error(`Failed to fetch courses: ${res.status}`);
   return res.json();
 }
@@ -73,7 +73,7 @@ export async function getCourse(courseId: string): Promise<Course> {
 }
 
 export async function createCourse(data: CourseCreate): Promise<Course> {
-  const res = await fetch(COURSES_ENDPOINT, {
+  const res = await fetch(`${COURSES_ENDPOINT}/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -171,7 +171,14 @@ export async function* askStream(
       if (!event.startsWith("data: ")) continue;
       const data = event.slice(6);
       if (data === "[DONE]") return;
-      yield JSON.parse(data);
+      let parsed: string;
+      try {
+        parsed = JSON.parse(data) as string;
+      } catch {
+        console.warn("Skipping malformed SSE chunk:", data);
+        continue;
+      }
+      yield parsed;
     }
   }
 }
