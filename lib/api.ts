@@ -6,14 +6,13 @@ const ASK_ENDPOINT = `${SESSIONS_ENDPOINT}/ask`;
 const ATTACHMENT_UPLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments/upload`;
 const ATTACHMENT_DOWNLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments`;
 const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
-const FILES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/files`;
 
 export function getAttachmentDownloadUrl(attachmentId: string): string {
   return `${ATTACHMENT_DOWNLOAD_ENDPOINT}/${encodeURIComponent(attachmentId)}`;
 }
 
 export async function getConversations(): Promise<Conversation[]> {
-  const response = await fetch(SESSIONS_ENDPOINT);
+  const response = await fetch(`${SESSIONS_ENDPOINT}/`);
   if (!response.ok) {
     throw new Error(`Failed to fetch conversations: ${response.status}`);
   }
@@ -21,7 +20,7 @@ export async function getConversations(): Promise<Conversation[]> {
 }
 
 export async function createConversation(): Promise<Conversation> {
-  const response = await fetch(SESSIONS_ENDPOINT, { method: "POST" });
+  const response = await fetch(`${SESSIONS_ENDPOINT}/`, { method: "POST" });
   if (!response.ok) {
     throw new Error(`Failed to create conversation: ${response.status}`);
   }
@@ -50,7 +49,7 @@ export async function uploadAttachment(file: File): Promise<AttachmentPublic> {
 export async function uploadMaterial(courseId: string, file: File): Promise<Material> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${FILES_ENDPOINT}/upload?course_id=${encodeURIComponent(courseId)}`, {
+  const res = await fetch(`${COURSES_ENDPOINT}/${encodeURIComponent(courseId)}/materials`, {
     method: "POST",
     body: form,
   });
@@ -61,8 +60,8 @@ export async function uploadMaterial(courseId: string, file: File): Promise<Mate
   return res.json();
 }
 
-export async function getCourses(): Promise<Course[]> {
-  const res = await fetch(COURSES_ENDPOINT);
+export async function getCourses(mine = false): Promise<Course[]> {
+  const res = await fetch(`${COURSES_ENDPOINT}/${mine ? "?mine=true" : ""}`);
   if (!res.ok) throw new Error(`Failed to fetch courses: ${res.status}`);
   return res.json();
 }
@@ -74,7 +73,7 @@ export async function getCourse(courseId: string): Promise<Course> {
 }
 
 export async function createCourse(data: CourseCreate): Promise<Course> {
-  const res = await fetch(COURSES_ENDPOINT, {
+  const res = await fetch(`${COURSES_ENDPOINT}/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -172,7 +171,14 @@ export async function* askStream(
       if (!event.startsWith("data: ")) continue;
       const data = event.slice(6);
       if (data === "[DONE]") return;
-      yield JSON.parse(data);
+      let parsed: string;
+      try {
+        parsed = JSON.parse(data) as string;
+      } catch {
+        console.warn("Skipping malformed SSE chunk:", data);
+        continue;
+      }
+      yield parsed;
     }
   }
 }
