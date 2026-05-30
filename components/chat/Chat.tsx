@@ -166,14 +166,19 @@ export default function Chat({ conversationId }: ChatProps) {
       return next;
     });
     try {
-      for await (const chunk of regenerateStream(activeConvId)) {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (!last) return next;
-          next[next.length - 1] = { role: "assistant", content: last.content + chunk };
-          return next;
-        });
+      for await (const event of regenerateStream(activeConvId)) {
+        if (event.type === "status") {
+          setStatusMessage(event.message);
+        } else if (event.type === "chunk") {
+          setStatusMessage(null);
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            next[next.length - 1] = { role: "assistant", content: last.content + event.content };
+            return next;
+          });
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error during regeneration");
