@@ -19,6 +19,7 @@ export interface AttachmentPublic {
 export type Attachment = AttachmentPublic;
 
 export interface Message {
+  id?: string;
   role: MessageRole;
   content: string;
   attachments?: AttachmentPublic[];
@@ -44,7 +45,7 @@ export interface MessagePublic {
   conversation_id: string;
   sender: "User" | "System" | "AI";
   content: string;
-  output_type_requested: string | null;
+  output_format_id: string | null;
   created_at: string;
   attachments: AttachmentPublic[];
 }
@@ -57,7 +58,6 @@ export interface Material {
   vector_namespace: string | null;
   uploaded_by: string | null;
   object_storage_key: string | null;
-  preview_url: string | null;
   created_at: string;
 }
 

@@ -80,6 +80,7 @@ export default function Chat({ conversationId }: ChatProps) {
           AI: "assistant",
         };
         const formatted: Message[] = fetchedMessages.map((m) => ({
+          id: m.id,
           role: senderToRole[m.sender],
           content: m.content,
           attachments: m.attachments,
