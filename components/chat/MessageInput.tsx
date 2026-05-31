@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { uploadAttachment } from "@/lib/api";
 import type { AttachmentPublic } from "@/lib/types";
+import OutputTypePicker from "./OutputTypePicker";
 
 interface PendingAttachment {
   clientKey: string;
@@ -12,7 +13,7 @@ interface PendingAttachment {
 }
 
 interface Props {
-  onSubmit: (query: string, attachmentIds: string[], attachments: AttachmentPublic[]) => void;
+  onSubmit: (query: string, attachmentIds: string[], attachments: AttachmentPublic[], outputFormatId: string) => void;
   disabled?: boolean;
 }
 
@@ -61,6 +62,7 @@ function FileChip({
 export default function MessageInput({ onSubmit, disabled }: Props) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
+  const [outputFormatId, setOutputFormatId] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,7 +88,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
 
   const submit = () => {
     if (!canSubmit) return;
-    onSubmit(value.trim(), readyIds, readyAttachments);
+    onSubmit(value.trim(), readyIds, readyAttachments, outputFormatId);
     setValue("");
     setPendingAttachments([]);
     textareaRef.current?.focus();
@@ -168,6 +170,12 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
         )}
 
         <div className="flex items-center gap-3">
+          <OutputTypePicker
+            value={outputFormatId}
+            onChange={setOutputFormatId}
+            disabled={disabled || isUploading}
+          />
+
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}

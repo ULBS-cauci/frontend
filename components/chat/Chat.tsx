@@ -105,6 +105,7 @@ export default function Chat({ conversationId }: ChatProps) {
     query: string,
     attachmentIds: string[] = [],
     attachments: AttachmentPublic[] = [],
+    outputFormatId = "",
   ) => {
     setError(null);
     setLoading(true);
@@ -125,7 +126,7 @@ export default function Chat({ conversationId }: ChatProps) {
         isNewConv = true;
       }
 
-      for await (const event of askStream(query, targetConvId, attachmentIds)) {
+      for await (const event of askStream(query, targetConvId, attachmentIds, outputFormatId || undefined)) {
         if (event.type === "status") {
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
@@ -217,6 +218,8 @@ export default function Chat({ conversationId }: ChatProps) {
                   messages={messages}
                   onRegenerate={canRegenerate ? handleRegenerate : undefined}
                   onAttachmentClick={setPreviewing}
+                  streamingActive={loading}
+                  conversationId={activeConvId}
                 />
                 {loading && (messages[messages.length - 1]?.content === "" || statusMessage) && (
                   <div className="mt-1 pl-3 border-l-2 border-[rgba(167,139,250,0.5)] flex items-center gap-2.5">
