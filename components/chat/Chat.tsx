@@ -41,6 +41,7 @@ export default function Chat({ conversationId }: ChatProps) {
         const formatted: Message[] = fetchedMessages.map((m) => ({
           role: senderToRole[m.sender],
           content: m.content,
+          sources: m.sources,
         }));
         setMessages(formatted);
       })
@@ -75,17 +76,24 @@ export default function Chat({ conversationId }: ChatProps) {
         isNewConv = true;
       }
 
-      for await (const chunk of askStream(query, targetConvId)) {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (!last) return next;
-          next[next.length - 1] = {
-            role: "assistant",
-            content: last.content + chunk,
-          };
-          return next;
-        });
+      for await (const event of askStream(query, targetConvId)) {
+        if (event.type === "content") {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            next[next.length - 1] = { ...last, content: last.content + event.chunk };
+            return next;
+          });
+        } else if (event.type === "sources") {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            next[next.length - 1] = { ...last, sources: event.sources };
+            return next;
+          });
+        }
       }
       
       if (isNewConv) {

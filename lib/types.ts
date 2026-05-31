@@ -1,5 +1,15 @@
 export type MessageRole = "user" | "assistant" | "system";
 
+export interface Source {
+  material_id: string;
+  file_name: string;
+  download_url: string;
+}
+
+export type StreamEvent =
+  | { type: "content"; chunk: string }
+  | { type: "sources"; sources: Source[] };
+
 export interface Course {
   id: string;
   title: string;
@@ -13,6 +23,7 @@ export interface Course {
 export interface Message {
   role: MessageRole;
   content: string;
+  sources?: Source[];
 }
 
 export interface AskRequest {
@@ -36,6 +47,7 @@ export interface MessagePublic {
   content: string;
   output_type_requested: string | null;
   created_at: string;
+  sources?: Source[];
 }
 
 export interface Material {

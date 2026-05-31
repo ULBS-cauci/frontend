@@ -1,5 +1,5 @@
 import { config } from "./config";
-import { AskRequest, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material } from "./types";
+import { AskRequest, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material, StreamEvent } from "./types";
 
 const SESSIONS_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions`;
 const ASK_ENDPOINT = `${SESSIONS_ENDPOINT}/ask`;
@@ -87,7 +87,7 @@ export async function getMaterials(courseId: string): Promise<Material[]> {
   return res.json();
 }
 
-export async function* askStream(content: string, conversation_id: string): AsyncIterable<string> {
+export async function* askStream(content: string, conversation_id: string): AsyncIterable<StreamEvent> {
   const request: AskRequest = { content, conversation_id };
 
   const response = await fetch(ASK_ENDPOINT, {
