@@ -103,30 +103,37 @@ export async function getMaterials(courseId: string): Promise<Material[]> {
   return res.json();
 }
 
-export async function* regenerateStream(conversationId: string): AsyncIterable<string> {
-  const response = await fetch(`${SESSIONS_ENDPOINT}/${conversationId}/regenerate`, {
-    method: "POST",
-  });
+export type StreamEvent =
+  | { type: "status"; message: string }
+  | { type: "chunk"; content: string }
+  | { type: "error"; message: string };
 
-  if (!response.ok || !response.body) {
-    throw new Error(`Backend returned ${response.status}: ${await response.text()}`);
-  }
-
-  const reader = response.body.getReader();
+async function* readStream(response: Response): AsyncIterable<StreamEvent> {
+  const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+
     buffer += decoder.decode(value, { stream: true });
+
     const events = buffer.split("\n\n");
     buffer = events.pop() ?? "";
+
     for (const event of events) {
       if (!event.startsWith("data: ")) continue;
       const data = event.slice(6);
       if (data === "[DONE]") return;
-      yield JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (parsed.type === "status") {
+        yield { type: "status", message: parsed.message };
+      } else if (parsed.type === "chunk") {
+        yield { type: "chunk", content: parsed.content };
+      } else if (parsed.type === "error") {
+        throw new Error(parsed.message);
+      }
     }
   }
 }
@@ -135,7 +142,7 @@ export async function* askStream(
   content: string,
   conversation_id: string,
   attachmentIds: string[] = [],
-): AsyncIterable<string> {
+): AsyncIterable<StreamEvent> {
   const request: AskRequest = {
     content,
     conversation_id,
@@ -149,36 +156,21 @@ export async function* askStream(
   });
 
   if (!response.ok || !response.body) {
-    throw new Error(
-      `Backend returned ${response.status}: ${await response.text()}`
-    );
+    throw new Error(`Backend returned ${response.status}: ${await response.text()}`);
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
+  yield* readStream(response);
+}
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+export async function* regenerateStream(conversation_id: string): AsyncIterable<StreamEvent> {
+  const response = await fetch(`${SESSIONS_ENDPOINT}/${conversation_id}/regenerate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
 
-    buffer += decoder.decode(value, { stream: true });
-
-    const events = buffer.split("\n\n");
-    buffer = events.pop() ?? "";
-
-    for (const event of events) {
-      if (!event.startsWith("data: ")) continue;
-      const data = event.slice(6);
-      if (data === "[DONE]") return;
-      let parsed: string;
-      try {
-        parsed = JSON.parse(data) as string;
-      } catch {
-        console.warn("Skipping malformed SSE chunk:", data);
-        continue;
-      }
-      yield parsed;
-    }
+  if (!response.ok || !response.body) {
+    throw new Error(`Backend returned ${response.status}: ${await response.text()}`);
   }
+
+  yield* readStream(response);
 }
