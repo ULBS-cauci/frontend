@@ -50,7 +50,7 @@ export default function MessageList({ messages, onRegenerate, onAttachmentClick 
         const hasAttachments = !!msg.attachments && msg.attachments.length > 0;
         return (
           <div
-            key={i}
+            key={msg.id ?? i}
             className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
           >
             <p className="text-[13px] text-[rgba(232,228,240,0.45)] mb-1.5 tracking-[0.03em]">
