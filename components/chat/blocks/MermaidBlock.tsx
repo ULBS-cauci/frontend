@@ -48,13 +48,15 @@ export default function MermaidBlock({ content, streaming }: BlockRendererProps)
         const { svg } = await m.render(id, content);
         if (renderSeq.current !== seq) return;
         // Mermaid v11 renders a bomb/error SVG instead of throwing on syntax errors.
-        // Detect it by the error-icon class or the "Syntax error" text it injects.
-        if (svg.includes("error-icon") || svg.includes("Syntax error")) {
+        // Check for the rendered <g class="error-icon"> element (not just the string,
+        // which also appears in the embedded CSS of every valid diagram).
+        if (svg.includes('<g class="error-icon"') || svg.includes("Syntax error in text")) {
           setRenderError(true);
           return;
         }
         setSvg(svg);
-      } catch {
+      } catch (e) {
+        console.error("[MermaidBlock] render failed:", e);
         if (renderSeq.current === seq) setRenderError(true);
       }
     })();
