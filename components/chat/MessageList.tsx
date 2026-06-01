@@ -8,6 +8,7 @@ interface Props {
   onAttachmentClick?: (attachment: AttachmentPublic) => void;
   streamingActive?: boolean;
   conversationId?: string;
+  lastUserRef?: React.RefObject<HTMLDivElement>;
 }
 
 function AttachmentChip({
@@ -43,7 +44,9 @@ function AttachmentChip({
   );
 }
 
-export default function MessageList({ messages, onRegenerate, onAttachmentClick, streamingActive, conversationId }: Props) {
+export default function MessageList({ messages, onRegenerate, onAttachmentClick, streamingActive, conversationId, lastUserRef }: Props) {
+  const lastUserIndex = messages.reduce((acc, msg, i) => (msg.role === "user" ? i : acc), -1);
+
   return (
     <div className="flex flex-col gap-4">
       {messages.map((msg, i) => {
@@ -53,6 +56,7 @@ export default function MessageList({ messages, onRegenerate, onAttachmentClick,
         return (
           <div
             key={msg.id ?? i}
+            ref={isUser && i === lastUserIndex ? lastUserRef : undefined}
             className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
           >
             <p className="text-[13px] text-[rgba(232,228,240,0.45)] mb-1.5 tracking-[0.03em]">
