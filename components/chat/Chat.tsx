@@ -126,7 +126,6 @@ export default function Chat({ conversationId }: ChatProps) {
         isNewConv = true;
       }
 
-<<<<<<< HEAD
       for await (const event of askStream(query, targetConvId, attachmentIds)) {
         if (event.type === "status") {
           setStatusMessage(event.message);
