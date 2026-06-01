@@ -190,7 +190,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             ref={fileInputRef}
             type="file"
             multiple
-            accept=".pdf,application/pdf"
+            accept=".pdf,.docx,.pptx,.png,.jpg,.jpeg"
             className="hidden"
             onChange={handleFileChange}
           />
