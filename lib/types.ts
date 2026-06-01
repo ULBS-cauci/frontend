@@ -7,8 +7,10 @@ export interface Source {
 }
 
 export type StreamEvent =
-  | { type: "content"; chunk: string }
-  | { type: "sources"; sources: Source[] };
+  | { type: "status"; message: string }
+  | { type: "chunk"; content: string }
+  | { type: "sources"; sources: Source[] }
+  | { type: "error"; message: string };
 
 export interface Course {
   id: string;
@@ -20,15 +22,26 @@ export interface Course {
   updated_at: string;
 }
 
+export interface AttachmentPublic {
+  id: string;
+  file_name: string;
+  created_at: string;
+}
+
+export type Attachment = AttachmentPublic;
+
 export interface Message {
+  id?: string;
   role: MessageRole;
   content: string;
   sources?: Source[];
+  attachments?: AttachmentPublic[];
 }
 
 export interface AskRequest {
-  conversation_id: string;
   content: string;
+  conversation_id?: string;
+  attachment_ids?: string[];
 }
 
 export interface Conversation {
@@ -45,9 +58,10 @@ export interface MessagePublic {
   conversation_id: string;
   sender: "User" | "System" | "AI";
   content: string;
-  output_type_requested: string | null;
+  output_format_id: string | null;
   created_at: string;
   sources?: Source[];
+  attachments: AttachmentPublic[];
 }
 
 export interface Material {
@@ -58,7 +72,6 @@ export interface Material {
   vector_namespace: string | null;
   uploaded_by: string | null;
   object_storage_key: string | null;
-  preview_url: string | null;
   created_at: string;
 }
 
