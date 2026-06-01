@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
-import { uploadAttachment } from "@/lib/api";
-import type { AttachmentPublic } from "@/lib/types";
+import { uploadAttachment, getSystemPrompts, getUserSettings, updateUserSettings } from "@/lib/api";
+import type { AttachmentPublic, SystemPromptSummary } from "@/lib/types";
 
 interface PendingAttachment {
   clientKey: string;
@@ -58,18 +58,82 @@ function FileChip({
   );
 }
 
+function Check() {
+  return (
+    <svg className="shrink-0 text-[#a78bfa]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 export default function MessageInput({ onSubmit, disabled }: Props) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [submenuOpen, setSubmenuOpen] = useState(false);
+  const [prompts, setPrompts] = useState<SystemPromptSummary[]>([]);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  // Load predefined prompts + current global selection when the menu first opens.
+  useEffect(() => {
+    if (!menuOpen) return;
+    let active = true;
+    Promise.all([getSystemPrompts(), getUserSettings()])
+      .then(([list, settings]) => {
+        if (!active) return;
+        setPrompts(list);
+        setSelectedPromptId(settings.selected_system_prompt_id);
+      })
+      .catch(() => { /* surface nothing — menu still shows upload */ });
+    return () => { active = false; };
+  }, [menuOpen]);
+
+  // Close the menu on outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+        setSubmenuOpen(false);
+      }
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") { setMenuOpen(false); setSubmenuOpen(false); }
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  const closeMenu = () => { setMenuOpen(false); setSubmenuOpen(false); };
+
+  const handleUploadClick = () => {
+    closeMenu();
+    fileInputRef.current?.click();
+  };
+
+  const handleSelectPrompt = async (id: string | null) => {
+    setSelectedPromptId(id);
+    closeMenu();
+    try {
+      await updateUserSettings({ selected_system_prompt_id: id });
+    } catch {
+      /* selection is best-effort; leave local state as-is */
+    }
+  };
 
   useEffect(() => {
     if (!disabled) textareaRef.current?.focus();
@@ -168,23 +232,103 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
         )}
 
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={disabled || isUploading}
-            className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Attach file"
-          >
-            {isUploading ? (
-              <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-              </svg>
+          <div ref={menuRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              disabled={disabled || isUploading}
+              className="text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Add"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              {isUploading ? (
+                <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              )}
+            </button>
+
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.5)] z-20"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleUploadClick}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.06)] transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  Upload a document
+                </button>
+
+                <div
+                  className="relative"
+                  onMouseEnter={() => setSubmenuOpen(true)}
+                  onMouseLeave={() => setSubmenuOpen(false)}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    aria-haspopup="menu"
+                    aria-expanded={submenuOpen}
+                    onFocus={() => setSubmenuOpen(true)}
+                    className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.06)] transition-colors"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
+                      </svg>
+                      Customise
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+
+                  {submenuOpen && (
+                    <div
+                      role="menu"
+                      className="absolute bottom-0 left-full ml-1 w-56 rounded-xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.5)] max-h-72 overflow-y-auto"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => handleSelectPrompt(null)}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[14px] text-[rgba(232,228,240,0.6)] hover:bg-[rgba(232,228,240,0.06)] transition-colors"
+                      >
+                        None
+                        {selectedPromptId === null && <Check />}
+                      </button>
+                      {prompts.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => handleSelectPrompt(p.id)}
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.06)] transition-colors"
+                        >
+                          <span className="truncate">{p.title ?? "Untitled"}</span>
+                          {selectedPromptId === p.id && <Check />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
           <input
             ref={fileInputRef}

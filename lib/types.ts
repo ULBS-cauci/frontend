@@ -70,3 +70,20 @@ export interface CourseUpdate {
   title?: string;
   description?: string;
 }
+
+export interface SystemPromptSummary {
+  id: string;
+  title: string | null;
+}
+
+export interface UserSettings {
+  user_id: string;
+  custom_system_prompt: string | null;
+  selected_system_prompt_id: string | null;
+  updated_at: string;
+}
+
+export interface UserSettingsUpdate {
+  custom_system_prompt?: string | null;
+  selected_system_prompt_id?: string | null;
+}
