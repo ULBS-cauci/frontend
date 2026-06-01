@@ -74,6 +74,8 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
   const [submenuOpen, setSubmenuOpen] = useState(false);
   const [prompts, setPrompts] = useState<SystemPromptSummary[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
+  const [promptsLoading, setPromptsLoading] = useState(false);
+  const [promptsError, setPromptsError] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -84,17 +86,28 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
     return () => { mountedRef.current = false; };
   }, []);
 
-  // Load predefined prompts + current global selection when the menu first opens.
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    const full = ta.scrollHeight;
+    ta.style.height = `${Math.min(full, 200)}px`;
+    ta.style.overflowY = full > 200 ? "auto" : "hidden";
+  }, [value]);
+
   useEffect(() => {
     if (!menuOpen) return;
     let active = true;
+    setPromptsLoading(true);
+    setPromptsError(false);
     Promise.all([getSystemPrompts(), getUserSettings()])
       .then(([list, settings]) => {
         if (!active) return;
         setPrompts(list);
         setSelectedPromptId(settings.selected_system_prompt_id);
       })
-      .catch(() => { /* surface nothing — menu still shows upload */ });
+      .catch(() => { if (active) setPromptsError(true); })
+      .finally(() => { if (active) setPromptsLoading(false); });
     return () => { active = false; };
   }, [menuOpen]);
 
@@ -237,7 +250,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
               type="button"
               onClick={() => setMenuOpen((o) => !o)}
               disabled={disabled || isUploading}
-              className="text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] hover:bg-[rgba(232,228,240,0.06)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Add"
               aria-haspopup="menu"
               aria-expanded={menuOpen}
@@ -257,13 +270,13 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             {menuOpen && (
               <div
                 role="menu"
-                className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.5)] z-20"
+                className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] z-20"
               >
                 <button
                   type="button"
                   role="menuitem"
                   onClick={handleUploadClick}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.06)] transition-colors"
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -283,7 +296,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                     aria-haspopup="menu"
                     aria-expanded={submenuOpen}
                     onFocus={() => setSubmenuOpen(true)}
-                    className="flex w-full items-center justify-between gap-2.5 px-3 py-2 text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.06)] transition-colors"
+                    className={`flex w-full items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] transition-colors ${submenuOpen ? "bg-[rgba(232,228,240,0.07)]" : "hover:bg-[rgba(232,228,240,0.07)]"}`}
                   >
                     <span className="flex items-center gap-2.5">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -298,31 +311,45 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                   </button>
 
                   {submenuOpen && (
-                    <div
-                      role="menu"
-                      className="absolute bottom-0 left-full ml-1 w-56 rounded-xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.5)] max-h-72 overflow-y-auto"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => handleSelectPrompt(null)}
-                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[14px] text-[rgba(232,228,240,0.6)] hover:bg-[rgba(232,228,240,0.06)] transition-colors"
+                    <div className="absolute bottom-0 left-full pl-1.5">
+                      <div
+                        role="menu"
+                        style={{ scrollbarWidth: "none" }}
+                        className="w-60 max-h-80 overflow-y-auto rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] [&::-webkit-scrollbar]:hidden"
                       >
-                        None
-                        {selectedPromptId === null && <Check />}
-                      </button>
-                      {prompts.map((p) => (
                         <button
-                          key={p.id}
                           type="button"
                           role="menuitem"
-                          onClick={() => handleSelectPrompt(p.id)}
-                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.06)] transition-colors"
+                          onClick={() => handleSelectPrompt(null)}
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.55)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
                         >
-                          <span className="truncate">{p.title ?? "Untitled"}</span>
-                          {selectedPromptId === p.id && <Check />}
+                          None
+                          {selectedPromptId === null && <Check />}
                         </button>
-                      ))}
+
+                        {promptsLoading && (
+                          <p className="px-3 py-2 text-[13px] text-[rgba(232,228,240,0.4)]">Loading…</p>
+                        )}
+                        {promptsError && (
+                          <p className="px-3 py-2 text-[13px] text-[#f87171]">Couldn’t load prompts.</p>
+                        )}
+                        {!promptsLoading && !promptsError && prompts.length === 0 && (
+                          <p className="px-3 py-2 text-[13px] text-[rgba(232,228,240,0.4)]">No prompts available.</p>
+                        )}
+
+                        {prompts.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => handleSelectPrompt(p.id)}
+                            className={`flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] transition-colors ${selectedPromptId === p.id ? "bg-[rgba(124,106,247,0.12)] text-[#c4b5fd]" : "text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)]"}`}
+                          >
+                            <span className="truncate">{p.title ?? "Untitled"}</span>
+                            {selectedPromptId === p.id && <Check />}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -339,12 +366,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             onChange={handleFileChange}
           />
 
-          <div className="relative flex-1 h-12 flex items-center">
-            {value === "" && (
-              <span className="absolute left-0 inset-y-0 flex items-center text-[rgba(232,228,240,0.35)] text-[18px] leading-[1.5] pointer-events-none select-none">
-                Ask a question…
-              </span>
-            )}
+          <div className="flex-1 flex items-center">
             <textarea
               ref={textareaRef}
               value={value}
@@ -355,14 +377,16 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
               rows={1}
               autoFocus
               disabled={disabled}
-              className="w-full bg-transparent border-none outline-none resize-none text-[#e8e4f0] text-[18px] leading-[1.5] font-[inherit] disabled:opacity-50"
+              placeholder="Ask a question…"
+              style={{ scrollbarWidth: "none" }}
+              className="block w-full py-[9px] bg-transparent border-none outline-none resize-none text-[#e8e4f0] text-[18px] leading-[1.5] font-[inherit] placeholder:text-[rgba(232,228,240,0.35)] disabled:opacity-50 max-h-[200px] [&::-webkit-scrollbar]:hidden"
             />
           </div>
 
           <button
             type="submit"
             disabled={!canSubmit}
-            className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+            className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] hover:bg-[rgba(232,228,240,0.06)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             aria-label="Send"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
