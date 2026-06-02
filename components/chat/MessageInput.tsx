@@ -111,10 +111,11 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
     return () => { active = false; };
   }, [menuOpen]);
 
-  // Close the menu on outside click or Escape.
+  // Close the menu on outside click, Escape, or focus leaving the menu
+  // (e.g. a keyboard user tabbing to the textarea).
   useEffect(() => {
     if (!menuOpen) return;
-    const onClick = (e: MouseEvent) => {
+    const closeIfOutside = (e: Event) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
         setSubmenuOpen(false);
@@ -123,10 +124,12 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") { setMenuOpen(false); setSubmenuOpen(false); }
     };
-    document.addEventListener("mousedown", onClick);
+    document.addEventListener("mousedown", closeIfOutside);
+    document.addEventListener("focusin", closeIfOutside);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("mousedown", closeIfOutside);
+      document.removeEventListener("focusin", closeIfOutside);
       document.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
@@ -139,12 +142,14 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
   };
 
   const handleSelectPrompt = async (id: string | null) => {
+    const previous = selectedPromptId;
     setSelectedPromptId(id);
     closeMenu();
     try {
       await updateUserSettings({ selected_system_prompt_id: id });
     } catch {
-      /* selection is best-effort; leave local state as-is */
+      /* revert so the UI matches what's actually persisted server-side */
+      setSelectedPromptId(previous);
     }
   };
 
@@ -252,7 +257,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
               disabled={disabled || isUploading}
               className="flex h-9 w-9 items-center justify-center rounded-full text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] hover:bg-[rgba(232,228,240,0.06)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Add"
-              aria-haspopup="menu"
+              aria-haspopup="true"
               aria-expanded={menuOpen}
             >
               {isUploading ? (
@@ -269,12 +274,10 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
 
             {menuOpen && (
               <div
-                role="menu"
                 className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] z-20"
               >
                 <button
                   type="button"
-                  role="menuitem"
                   onClick={handleUploadClick}
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
                 >
@@ -292,8 +295,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                 >
                   <button
                     type="button"
-                    role="menuitem"
-                    aria-haspopup="menu"
+                    aria-haspopup="true"
                     aria-expanded={submenuOpen}
                     onFocus={() => setSubmenuOpen(true)}
                     className={`flex w-full items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] transition-colors ${submenuOpen ? "bg-[rgba(232,228,240,0.07)]" : "hover:bg-[rgba(232,228,240,0.07)]"}`}
@@ -313,13 +315,11 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                   {submenuOpen && (
                     <div className="absolute bottom-0 left-full pl-1.5">
                       <div
-                        role="menu"
                         style={{ scrollbarWidth: "none" }}
                         className="w-60 max-h-80 overflow-y-auto rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] [&::-webkit-scrollbar]:hidden"
                       >
                         <button
                           type="button"
-                          role="menuitem"
                           onClick={() => handleSelectPrompt(null)}
                           className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.55)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
                         >
@@ -341,7 +341,6 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                           <button
                             key={p.id}
                             type="button"
-                            role="menuitem"
                             onClick={() => handleSelectPrompt(p.id)}
                             className={`flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] transition-colors ${selectedPromptId === p.id ? "bg-[rgba(124,106,247,0.12)] text-[#c4b5fd]" : "text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)]"}`}
                           >

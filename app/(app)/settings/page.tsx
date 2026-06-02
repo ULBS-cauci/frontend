@@ -49,7 +49,10 @@ export default function SettingsPage() {
       </div>
 
       <div className="relative max-w-2xl">
-        <label className="block text-sm font-medium text-[rgba(232,228,240,0.75)] mb-2">
+        <label
+          htmlFor="custom-system-prompt"
+          className="block text-sm font-medium text-[rgba(232,228,240,0.75)] mb-2"
+        >
           Custom system prompt
         </label>
         <p className="text-[rgba(232,228,240,0.4)] text-xs mb-3">
@@ -62,6 +65,7 @@ export default function SettingsPage() {
         ) : (
           <>
             <textarea
+              id="custom-system-prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={8}
