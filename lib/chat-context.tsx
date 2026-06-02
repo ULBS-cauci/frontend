@@ -11,6 +11,9 @@ interface ChatContextType {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   activeConvId: string | undefined;
   setActiveConvId: React.Dispatch<React.SetStateAction<string | undefined>>;
+  selectedCourseId: string | null;
+  selectedCourseName: string | null;
+  setSelectedCourse: (id: string | null, name: string | null) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -19,6 +22,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | undefined>(undefined);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedCourseName, setSelectedCourseName] = useState<string | null>(null);
+
+  const setSelectedCourse = useCallback((id: string | null, name: string | null) => {
+    setSelectedCourseId(id);
+    setSelectedCourseName(name);
+  }, []);
 
   const refreshConversations = useCallback(async () => {
     try {
@@ -35,7 +45,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [refreshConversations]);
 
   return (
-    <ChatContext.Provider value={{ conversations, refreshConversations, messages, setMessages, activeConvId, setActiveConvId }}>
+    <ChatContext.Provider value={{
+      conversations, refreshConversations,
+      messages, setMessages,
+      activeConvId, setActiveConvId,
+      selectedCourseId, selectedCourseName, setSelectedCourse,
+    }}>
       {children}
     </ChatContext.Provider>
   );
