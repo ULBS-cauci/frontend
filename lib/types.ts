@@ -11,14 +11,13 @@ export type StreamEvent =
   | { type: "chunk"; content: string }
   | { type: "sources"; sources: Source[] }
   | { type: "error"; message: string }
-  | { type: "context_switch_request"; detected_course_id: string; detected_course_name: string; user_message_id: string };
+  | { type: "context_switch_request"; detected_course_id: string; detected_course_name: string };
 
 export interface PendingContextSwitch {
   detectedCourseId: string;
   detectedCourseName: string;
   originalQuery: string;
   originalAttachmentIds: string[];
-  userMessageId: string;
 }
 
 export interface Course {
@@ -52,7 +51,6 @@ export interface AskRequest {
   conversation_id?: string;
   attachment_ids?: string[];
   force_current_course?: boolean;
-  existing_message_id?: string;
 }
 
 export interface Conversation {

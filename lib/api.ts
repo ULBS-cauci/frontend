@@ -138,7 +138,6 @@ async function* readStream(response: Response): AsyncIterable<StreamEvent> {
           type: "context_switch_request",
           detected_course_id: parsed.detected_course_id,
           detected_course_name: parsed.detected_course_name,
-          user_message_id: parsed.user_message_id,
         };
       } else if (parsed.type === "error") {
         throw new Error(parsed.message);
@@ -152,20 +151,20 @@ export async function* askStream(
   conversation_id: string,
   attachmentIds: string[] = [],
   forceCurrentCourse = false,
-  existingMessageId?: string,
+  signal?: AbortSignal,
 ): AsyncIterable<StreamEvent> {
   const request: AskRequest = {
     content,
     conversation_id,
     ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
     ...(forceCurrentCourse ? { force_current_course: true } : {}),
-    ...(existingMessageId ? { existing_message_id: existingMessageId } : {}),
   };
 
   const response = await fetch(ASK_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
+    signal,
   });
 
   if (!response.ok || !response.body) {

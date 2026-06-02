@@ -26,21 +26,13 @@ export default function Chat({ conversationId }: ChatProps) {
   const [error, setError] = useState<string | null>(null);
   const [pendingSwitch, setPendingSwitch] = useState<PendingContextSwitch | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const streamAbortControllerRef = useRef<AbortController | null>(null);
 
   const [previewing, setPreviewing] = useState<AttachmentPublic | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(false);
 
-  // Seed course selection from URL params (e.g. redirect from course detail page).
-  useEffect(() => {
-    const courseId = searchParams.get("course_id");
-    const courseName = searchParams.get("course_name");
-    if (courseId && courseName) {
-      setSelectedCourse(courseId, decodeURIComponent(courseName));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Fetch PDF as blob when an attachment is selected so we get a same-origin
   // blob URL — cross-origin iframes block Chrome's built-in PDF viewer.
@@ -120,11 +112,14 @@ export default function Chat({ conversationId }: ChatProps) {
     };
   }, [conversationId, setActiveConvId, setMessages]);
 
-  // Restore the course selector to match the active conversation's stored course_id.
-  // Runs on page load and whenever the conversations list refreshes (e.g. after a new
-  // conversation is created). Without this, selectedCourseId resets to null on every
-  // page refresh even though course_id is persisted in the DB.
   useEffect(() => {
+    const urlCourseId = searchParams.get("course_id");
+    const urlCourseName = searchParams.get("course_name");
+    if (urlCourseId && urlCourseName) {
+      setSelectedCourse(urlCourseId, decodeURIComponent(urlCourseName));
+      return;
+    }
+
     if (!conversationId) {
       setSelectedCourse(null, null);
       return;
@@ -142,28 +137,26 @@ export default function Chat({ conversationId }: ChatProps) {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [conversationId, conversations, setSelectedCourse]);
+  }, [conversationId, conversations, setSelectedCourse, searchParams]);
 
   const handleAsk = async (
     query: string,
     attachmentIds: string[] = [],
     attachments: AttachmentPublic[] = [],
     forceCurrentCourse = false,
-    existingMessageId?: string,
+    addUserBubble = true,
   ) => {
     setError(null);
     setPendingSwitch(null);
     setLoading(true);
 
-    // Only add the user bubble when it's a fresh message (not a re-submission).
-    if (!existingMessageId) {
+    if (addUserBubble) {
       setMessages((prev) => [
         ...prev,
         { role: "user", content: query, attachments },
         { role: "assistant", content: "" },
       ]);
     } else {
-      // Re-submission: append a fresh empty assistant bubble.
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     }
 
@@ -178,7 +171,7 @@ export default function Chat({ conversationId }: ChatProps) {
         isNewConv = true;
       }
 
-      for await (const event of askStream(query, targetConvId, attachmentIds, forceCurrentCourse, existingMessageId)) {
+      for await (const event of askStream(query, targetConvId, attachmentIds, forceCurrentCourse)) {
         if (event.type === "status") {
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
@@ -199,14 +192,12 @@ export default function Chat({ conversationId }: ChatProps) {
             return next;
           });
         } else if (event.type === "context_switch_request") {
-          // Remove the empty assistant bubble and show the confirmation banner instead.
           setMessages((prev) => prev.slice(0, -1));
           setPendingSwitch({
             detectedCourseId: event.detected_course_id,
             detectedCourseName: event.detected_course_name,
             originalQuery: query,
             originalAttachmentIds: attachmentIds,
-            userMessageId: event.user_message_id,
           });
         }
       }
@@ -227,8 +218,6 @@ export default function Chat({ conversationId }: ChatProps) {
     if (!pendingSwitch) return;
     const snap = pendingSwitch;
 
-    // Reset all state completely BEFORE any async work so the stream has a
-    // clean, empty canvas to write into.
     setPendingSwitch(null);
     setError(null);
     setStatusMessage(null);
@@ -241,8 +230,6 @@ export default function Chat({ conversationId }: ChatProps) {
         const newConv = await createConversation(snap.detectedCourseId);
         setActiveConvId(newConv.id);
 
-        // Seed the user bubble AFTER we have the conversation ID so the stream
-        // appends to a known, stable message array owned by this conv.
         setMessages([
           { role: "user", content: snap.originalQuery },
           { role: "assistant", content: "" },
@@ -271,9 +258,6 @@ export default function Chat({ conversationId }: ChatProps) {
           }
         }
 
-        // Navigate AFTER the stream is fully consumed. Navigating mid-stream would
-        // trigger useEffect([conversationId]) which calls setMessages([]) and wipes
-        // the in-progress chunks.
         await refreshConversations();
         router.replace(`/chat/${newConv.id}`);
       } catch (err) {
@@ -290,7 +274,7 @@ export default function Chat({ conversationId }: ChatProps) {
     const snap = pendingSwitch;
     setPendingSwitch(null);
     // Re-submit with force=true — backend returns a graceful refusal without running RAG.
-    handleAsk(snap.originalQuery, snap.originalAttachmentIds, [], true, snap.userMessageId);
+    handleAsk(snap.originalQuery, snap.originalAttachmentIds, [], true, false);
   };
 
   const handleRegenerate = async () => {
