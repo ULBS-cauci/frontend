@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl } from "@/lib/api";
+import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl, getCourse } from "@/lib/api";
 import type { AttachmentPublic, Message, MessagePublic, MessageRole, PendingContextSwitch } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
@@ -17,7 +17,7 @@ export default function Chat({ conversationId }: ChatProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
-    refreshConversations, messages, setMessages,
+    conversations, refreshConversations, messages, setMessages,
     activeConvId, setActiveConvId,
     selectedCourseId, setSelectedCourse,
   } = useChatContext();
@@ -119,6 +119,30 @@ export default function Chat({ conversationId }: ChatProps) {
       cancelled = true;
     };
   }, [conversationId, setActiveConvId, setMessages]);
+
+  // Restore the course selector to match the active conversation's stored course_id.
+  // Runs on page load and whenever the conversations list refreshes (e.g. after a new
+  // conversation is created). Without this, selectedCourseId resets to null on every
+  // page refresh even though course_id is persisted in the DB.
+  useEffect(() => {
+    if (!conversationId) {
+      setSelectedCourse(null, null);
+      return;
+    }
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return; // list not yet loaded — will re-run when it arrives
+    if (!conv.course_id) {
+      setSelectedCourse(null, null);
+      return;
+    }
+    let cancelled = false;
+    getCourse(conv.course_id)
+      .then((course) => {
+        if (!cancelled) setSelectedCourse(course.id, course.title);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [conversationId, conversations, setSelectedCourse]);
 
   const handleAsk = async (
     query: string,
