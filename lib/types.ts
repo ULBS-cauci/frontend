@@ -80,7 +80,7 @@ export interface UserSettings {
   user_id: string;
   custom_system_prompt: string | null;
   selected_system_prompt_id: string | null;
-  updated_at: string;
+  updated_at: string | null;
 }
 
 export interface UserSettingsUpdate {
