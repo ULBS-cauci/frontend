@@ -1,8 +1,8 @@
 "use client";
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
-import { uploadAttachment } from "@/lib/api";
-import type { AttachmentPublic } from "@/lib/types";
-import OutputTypePicker from "./OutputTypePicker";
+import { uploadAttachment, getSystemPrompts, getUserSettings, updateUserSettings } from "@/lib/api";
+import type { AttachmentPublic, SystemPromptSummary } from "@/lib/types";
+import { useChatContext } from "@/lib/chat-context";
 
 interface PendingAttachment {
   clientKey: string;
@@ -59,19 +59,101 @@ function FileChip({
   );
 }
 
+function Check() {
+  return (
+    <svg className="shrink-0 text-[#a78bfa]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 export default function MessageInput({ onSubmit, disabled }: Props) {
+  const { outputFormats } = useChatContext();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
   const [outputFormatId, setOutputFormatId] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [submenuOpen, setSubmenuOpen] = useState(false);
+  const [outputSubmenuOpen, setOutputSubmenuOpen] = useState(false);
+  const [prompts, setPrompts] = useState<SystemPromptSummary[]>([]);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
+  const [promptsLoading, setPromptsLoading] = useState(false);
+  const [promptsError, setPromptsError] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    const full = ta.scrollHeight;
+    ta.style.height = `${Math.min(full, 200)}px`;
+    ta.style.overflowY = full > 200 ? "auto" : "hidden";
+  }, [value]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    let active = true;
+    setPromptsLoading(true);
+    setPromptsError(false);
+    Promise.all([getSystemPrompts(), getUserSettings()])
+      .then(([list, settings]) => {
+        if (!active) return;
+        setPrompts(list);
+        setSelectedPromptId(settings.selected_system_prompt_id);
+      })
+      .catch(() => { if (active) setPromptsError(true); })
+      .finally(() => { if (active) setPromptsLoading(false); });
+    return () => { active = false; };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeIfOutside = (e: Event) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+        setSubmenuOpen(false);
+        setOutputSubmenuOpen(false);
+      }
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") { setMenuOpen(false); setSubmenuOpen(false); setOutputSubmenuOpen(false); }
+    };
+    document.addEventListener("mousedown", closeIfOutside);
+    document.addEventListener("focusin", closeIfOutside);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", closeIfOutside);
+      document.removeEventListener("focusin", closeIfOutside);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  const closeMenu = () => { setMenuOpen(false); setSubmenuOpen(false); setOutputSubmenuOpen(false); };
+
+  const handleUploadClick = () => {
+    closeMenu();
+    fileInputRef.current?.click();
+  };
+
+  const handleSelectPrompt = async (id: string | null) => {
+    const previous = selectedPromptId;
+    setSelectedPromptId(id);
+    closeMenu();
+    try {
+      await updateUserSettings({ selected_system_prompt_id: id });
+    } catch {
+      setSelectedPromptId(previous);
+    }
+  };
 
   useEffect(() => {
     if (!disabled) textareaRef.current?.focus();
@@ -170,29 +252,174 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
         )}
 
         <div className="flex items-center gap-3">
-          <OutputTypePicker
-            value={outputFormatId}
-            onChange={setOutputFormatId}
-            disabled={disabled || isUploading}
-          />
+          <div ref={menuRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              disabled={disabled || isUploading}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] hover:bg-[rgba(232,228,240,0.06)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Add"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+            >
+              {isUploading ? (
+                <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              )}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={disabled || isUploading}
-            className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Attach file"
-          >
-            {isUploading ? (
-              <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-              </svg>
+            {menuOpen && (
+              <div className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] z-20">
+                <button
+                  type="button"
+                  onClick={handleUploadClick}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  Upload a document
+                </button>
+
+                {/* Customise → system prompt submenu */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => { setSubmenuOpen(true); setOutputSubmenuOpen(false); }}
+                  onMouseLeave={() => setSubmenuOpen(false)}
+                >
+                  <button
+                    type="button"
+                    aria-haspopup="true"
+                    aria-expanded={submenuOpen}
+                    onFocus={() => { setSubmenuOpen(true); setOutputSubmenuOpen(false); }}
+                    className={`flex w-full items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] transition-colors ${submenuOpen ? "bg-[rgba(232,228,240,0.07)]" : "hover:bg-[rgba(232,228,240,0.07)]"}`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
+                      </svg>
+                      Customise
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+
+                  {submenuOpen && (
+                    <div className="absolute bottom-0 left-full pl-1.5">
+                      <div
+                        style={{ scrollbarWidth: "none" }}
+                        className="w-60 max-h-80 overflow-y-auto rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] [&::-webkit-scrollbar]:hidden"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPrompt(null)}
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.55)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
+                        >
+                          None
+                          {selectedPromptId === null && <Check />}
+                        </button>
+
+                        {promptsLoading && (
+                          <p className="px-3 py-2 text-[13px] text-[rgba(232,228,240,0.4)]">Loading…</p>
+                        )}
+                        {promptsError && (
+                          <p className="px-3 py-2 text-[13px] text-[#f87171]">Couldn't load prompts.</p>
+                        )}
+                        {!promptsLoading && !promptsError && prompts.length === 0 && (
+                          <p className="px-3 py-2 text-[13px] text-[rgba(232,228,240,0.4)]">No prompts available.</p>
+                        )}
+
+                        {prompts.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => handleSelectPrompt(p.id)}
+                            className={`flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] transition-colors ${selectedPromptId === p.id ? "bg-[rgba(124,106,247,0.12)] text-[#c4b5fd]" : "text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)]"}`}
+                          >
+                            <span className="truncate">{p.title ?? "Untitled"}</span>
+                            {selectedPromptId === p.id && <Check />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Output format submenu */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => { setOutputSubmenuOpen(true); setSubmenuOpen(false); }}
+                  onMouseLeave={() => setOutputSubmenuOpen(false)}
+                >
+                  <button
+                    type="button"
+                    aria-haspopup="true"
+                    aria-expanded={outputSubmenuOpen}
+                    onFocus={() => { setOutputSubmenuOpen(true); setSubmenuOpen(false); }}
+                    className={`flex w-full items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] transition-colors ${outputSubmenuOpen ? "bg-[rgba(232,228,240,0.07)]" : "hover:bg-[rgba(232,228,240,0.07)]"}`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                      </svg>
+                      Output format
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+
+                  {outputSubmenuOpen && (
+                    <div className="absolute bottom-0 left-full pl-1.5">
+                      <div
+                        style={{ scrollbarWidth: "none" }}
+                        className="w-60 max-h-80 overflow-y-auto rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] [&::-webkit-scrollbar]:hidden"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => { setOutputFormatId(""); closeMenu(); }}
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.55)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
+                        >
+                          Default
+                          {outputFormatId === "" && <Check />}
+                        </button>
+
+                        {outputFormats.length === 0 && (
+                          <p className="px-3 py-2 text-[13px] text-[rgba(232,228,240,0.4)]">No formats available.</p>
+                        )}
+
+                        {outputFormats.map((f) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => { setOutputFormatId(f.id); closeMenu(); }}
+                            className={`flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] transition-colors ${outputFormatId === f.id ? "bg-[rgba(124,106,247,0.12)] text-[#c4b5fd]" : "text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)]"}`}
+                          >
+                            <span className="truncate capitalize">{f.name.replace(/_/g, " ")}</span>
+                            {outputFormatId === f.id && <Check />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
           <input
             ref={fileInputRef}
@@ -203,12 +430,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             onChange={handleFileChange}
           />
 
-          <div className="relative flex-1 h-12 flex items-center">
-            {value === "" && (
-              <span className="absolute left-0 inset-y-0 flex items-center text-[rgba(232,228,240,0.35)] text-[18px] leading-[1.5] pointer-events-none select-none">
-                Ask a question…
-              </span>
-            )}
+          <div className="flex-1 flex items-center">
             <textarea
               ref={textareaRef}
               value={value}
@@ -219,14 +441,16 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
               rows={1}
               autoFocus
               disabled={disabled}
-              className="w-full bg-transparent border-none outline-none resize-none text-[#e8e4f0] text-[18px] leading-[1.5] font-[inherit] disabled:opacity-50"
+              placeholder="Ask a question…"
+              style={{ scrollbarWidth: "none" }}
+              className="block w-full py-[9px] bg-transparent border-none outline-none resize-none text-[#e8e4f0] text-[18px] leading-[1.5] font-[inherit] placeholder:text-[rgba(232,228,240,0.35)] disabled:opacity-50 max-h-[200px] [&::-webkit-scrollbar]:hidden"
             />
           </div>
 
           <button
             type="submit"
             disabled={!canSubmit}
-            className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+            className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] hover:bg-[rgba(232,228,240,0.06)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             aria-label="Send"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
