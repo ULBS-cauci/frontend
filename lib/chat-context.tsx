@@ -34,7 +34,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshConversations();
-    getOutputFormats().then(setOutputFormats).catch(() => {});
+    getOutputFormats().then(setOutputFormats).catch((err) => console.error("Failed to fetch output formats:", err));
   }, [refreshConversations]);
 
   return (

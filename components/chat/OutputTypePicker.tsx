@@ -37,6 +37,9 @@ export default function OutputTypePicker({ value, onChange, disabled }: Props) {
         type="button"
         disabled={isDisabled}
         onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`Output format: ${selected.name}`}
         className="h-8 rounded-lg bg-[#1a1825] border border-[rgba(124,106,247,0.3)] text-[rgba(232,228,240,0.7)] text-[13px] px-3 flex items-center gap-1.5 outline-none focus:border-[rgba(124,106,247,0.6)] hover:border-[rgba(124,106,247,0.5)] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed capitalize"
       >
         {selected.name}
@@ -51,11 +54,17 @@ export default function OutputTypePicker({ value, onChange, disabled }: Props) {
       </button>
 
       {open && (
-        <div className="absolute left-0 bottom-full mb-1 z-50 min-w-full rounded-lg bg-[#1a1825] border border-[rgba(124,106,247,0.3)] overflow-hidden shadow-xl">
+        <div
+          role="listbox"
+          aria-label="Output format"
+          className="absolute left-0 bottom-full mb-1 z-50 min-w-full rounded-lg bg-[#1a1825] border border-[rgba(124,106,247,0.3)] overflow-hidden shadow-xl"
+        >
           {allOptions.map((opt) => (
             <button
               key={opt.id}
               type="button"
+              role="option"
+              aria-selected={opt.id === value}
               onClick={() => { onChange(opt.id); setOpen(false); }}
               className={`w-full text-center text-[13px] px-4 py-1.5 capitalize transition-colors ${
                 opt.id === value

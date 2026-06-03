@@ -15,13 +15,13 @@ export default function MarkdownMessage({
   conversationId,
 }: Props) {
   const components: Components = {
-    // Strip the <pre> wrapper — block renderers manage their own container.
-    // Without this, <pre> applies white-space:pre and monospace font to all children.
+    // Strip the outer <pre> — registered block renderers own their container;
+    // unregistered block code re-creates <pre> inside the code renderer below.
     pre({ children }) {
       return <>{children}</>;
     },
 
-    code({ className, children, ...rest }) {
+    code({ className, children }) {
       const lang = /language-(\w+)/.exec(className ?? "")?.[1];
       const Renderer = lang ? BLOCK_RENDERERS[lang] : undefined;
       if (Renderer) {
@@ -30,11 +30,17 @@ export default function MarkdownMessage({
           <Renderer content={raw} streaming={streaming} conversationId={conversationId} />
         );
       }
+      if (lang) {
+        return (
+          <pre className="my-2 rounded-lg bg-[rgba(124,106,247,0.08)] border border-[rgba(232,228,240,0.08)] p-3 overflow-x-auto text-sm">
+            <code className="font-mono text-[rgba(232,228,240,0.85)] whitespace-pre-wrap break-words">
+              {children}
+            </code>
+          </pre>
+        );
+      }
       return (
-        <code
-          className="bg-[rgba(124,106,247,0.12)] text-[#a78bfa] rounded px-1.5 py-0.5 text-[0.85em] font-mono"
-          {...rest}
-        >
+        <code className="bg-[rgba(124,106,247,0.12)] text-[#a78bfa] rounded px-1.5 py-0.5 text-[0.85em] font-mono">
           {children}
         </code>
       );

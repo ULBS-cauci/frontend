@@ -9,7 +9,7 @@ async function getMermaid() {
   if (!initialized) {
     m.initialize({
       startOnLoad: false,
-      securityLevel: "antiscript",
+      securityLevel: "strict",
       theme: "dark",
       themeVariables: {
         primaryColor: "#7c6af7",
