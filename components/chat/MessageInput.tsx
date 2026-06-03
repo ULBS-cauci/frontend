@@ -115,6 +115,8 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
     return () => { active = false; };
   }, [menuOpen]);
 
+  // Close the menu on outside click, Escape, or focus leaving the menu
+  // (e.g. a keyboard user tabbing to the textarea).
   useEffect(() => {
     if (!menuOpen) return;
     const closeIfOutside = (e: Event) => {
@@ -151,6 +153,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
     try {
       await updateUserSettings({ selected_system_prompt_id: id });
     } catch {
+      /* revert so the UI matches what's actually persisted server-side */
       setSelectedPromptId(previous);
     }
   };
@@ -275,7 +278,9 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             </button>
 
             {menuOpen && (
-              <div className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] z-20">
+              <div
+                className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] z-20"
+              >
                 <button
                   type="button"
                   onClick={handleUploadClick}
