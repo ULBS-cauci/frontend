@@ -136,6 +136,7 @@ export default function Chat({ conversationId }: ChatProps) {
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
           setStatusMessage(null);
+          scrollIntent.current = "bottom";
           setMessages((prev) => {
             const next = [...prev];
             const last = next[next.length - 1];
@@ -204,13 +205,10 @@ export default function Chat({ conversationId }: ChatProps) {
   useLayoutEffect(() => {
     if (scrollIntent.current === "bottom") {
       const container = scrollContainerRef.current;
-      const bottom = bottomRef.current;
-      if (container && bottom) {
-        container.scrollTop =
-          container.scrollTop +
-          bottom.getBoundingClientRect().top -
-          container.getBoundingClientRect().top -
-          container.clientHeight;
+      if (container) {
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight - container.clientHeight;
+        });
       }
     } else if (scrollIntent.current === "user-top") {
       const container = scrollContainerRef.current;
@@ -228,11 +226,11 @@ export default function Chat({ conversationId }: ChatProps) {
   }, [messages]);
 
   return (
-    <div className="h-screen bg-[#0c0b10] text-[#e8e4f0] flex">
+    <div className="h-full bg-[#0c0b10] text-[#e8e4f0] flex">
       {/* Chat pane — full width with no preview, half width when PDF is open */}
       <div className={`${previewing ? "w-1/2" : "w-full"} flex items-center justify-center px-6 py-10`}>
         <div className="w-full max-w-4xl h-full flex flex-col overflow-hidden">
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-10 pt-10 pb-6">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-10 pt-10 pb-6 chat-scroll">
             {messages.length === 0 ? (
               <div className="h-full flex items-start justify-start">
                 <p className="text-[rgba(232,228,240,0.45)] text-base tracking-[-0.01em]">
@@ -263,7 +261,6 @@ export default function Chat({ conversationId }: ChatProps) {
                   </p>
                 )}
                 <div ref={bottomRef} />
-                {loading && <div className="h-screen shrink-0" aria-hidden="true" />}
               </>
             )}
           </div>

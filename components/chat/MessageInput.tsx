@@ -237,9 +237,15 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
 
   return (
     <div className="relative w-full rounded-[28px] p-[1.5px]">
+      {/* Animated glow — fades in while AI is thinking */}
       <div
-        className="glow-border absolute inset-0 rounded-[inherit] z-0"
-        style={{ animationDuration: focused ? "2s" : "4s" }}
+        className="glow-border absolute inset-0 rounded-[inherit] z-0 transition-opacity duration-700"
+        style={{ opacity: disabled ? 1 : 0 }}
+      />
+      {/* Static border — fades in once response arrives */}
+      <div
+        className="absolute inset-0 rounded-[inherit] z-0 bg-[rgba(167,139,250,0.2)] transition-opacity duration-700"
+        style={{ opacity: disabled ? 0 : 1 }}
       />
 
       <form

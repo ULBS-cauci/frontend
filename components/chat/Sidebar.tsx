@@ -42,7 +42,7 @@ export default function Sidebar({ role = "professor" }: Props) {
 
   return (
     <div
-      className={`relative shrink-0 h-screen transition-all duration-300 ${isOpen ? "w-60" : "w-14 p-[1.5px]"}`}
+      className={`relative shrink-0 h-full transition-all duration-300 ${isOpen ? "w-60" : "w-14 p-[1.5px]"}`}
     >
       <div
         className="relative z-[1] w-full h-full flex flex-col bg-[#0c0b10] rounded-r-3xl border-r border-t border-b border-[rgba(232,228,240,0.07)]"
