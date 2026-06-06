@@ -5,6 +5,7 @@ import { askStream, regenerateStream, getMessages, createConversation, getAttach
 import type { AttachmentPublic, Message, MessagePublic, MessageRole } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput, { type MessageInputHandle } from "./MessageInput";
+import FilePreview from "../FilePreview";
 import { useChatContext } from "@/lib/chat-context";
 
 interface ChatProps {
@@ -23,45 +24,6 @@ export default function Chat({ conversationId }: ChatProps) {
   const abortRef = useRef<AbortController | null>(null);
 
   const [previewing, setPreviewing] = useState<AttachmentPublic | null>(null);
-  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState(false);
-
-  // Fetch PDF as blob when an attachment is selected so we get a same-origin
-  // blob URL — cross-origin iframes block Chrome's built-in PDF viewer.
-  useEffect(() => {
-    if (!previewing) {
-      if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
-      setPreviewBlobUrl(null);
-      setPreviewError(false);
-      return;
-    }
-
-    let cancelled = false;
-    setPreviewLoading(true);
-    setPreviewError(false);
-
-    fetch(getAttachmentDownloadUrl(previewing.id))
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        setPreviewBlobUrl(URL.createObjectURL(blob));
-      })
-      .catch(() => {
-        if (!cancelled) setPreviewError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setPreviewLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewing]);
 
   // Initial load
   useEffect(() => {
@@ -285,7 +247,7 @@ export default function Chat({ conversationId }: ChatProps) {
         </div>
       </div>
 
-      {/* PDF preview pane */}
+      {/* Attachment preview pane */}
       {previewing && (
         <div className="w-1/2 border-l border-[rgba(232,228,240,0.07)] flex flex-col">
           <div className="flex items-center justify-between px-4 py-3 bg-[#141219] border-b border-[rgba(232,228,240,0.07)] shrink-0">
@@ -302,23 +264,10 @@ export default function Chat({ conversationId }: ChatProps) {
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            {previewLoading && (
-              <div className="flex items-center justify-center h-full text-[rgba(232,228,240,0.45)] text-sm">
-                Loading…
-              </div>
-            )}
-            {previewError && (
-              <div className="flex items-center justify-center h-full text-[#f87171] text-sm">
-                Failed to load PDF.
-              </div>
-            )}
-            {!previewLoading && !previewError && previewBlobUrl && (
-              <iframe
-                src={previewBlobUrl}
-                className="w-full h-full bg-white"
-                title={previewing.file_name}
-              />
-            )}
+            <FilePreview
+              url={getAttachmentDownloadUrl(previewing.id)}
+              fileName={previewing.file_name}
+            />
           </div>
         </div>
       )}

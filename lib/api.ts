@@ -11,6 +11,10 @@ export function getAttachmentDownloadUrl(attachmentId: string): string {
   return `${ATTACHMENT_DOWNLOAD_ENDPOINT}/${encodeURIComponent(attachmentId)}`;
 }
 
+export function getMaterialPreviewUrl(courseId: string, materialId: string): string {
+  return `${COURSES_ENDPOINT}/${encodeURIComponent(courseId)}/materials/${encodeURIComponent(materialId)}/preview`;
+}
+
 export async function getConversations(): Promise<Conversation[]> {
   const response = await fetch(`${SESSIONS_ENDPOINT}/`);
   if (!response.ok) {
