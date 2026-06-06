@@ -194,6 +194,17 @@ export default function Chat({ conversationId }: ChatProps) {
             next[next.length - 1] = { role: "assistant", content: last.content + event.content };
             return next;
           });
+        } else if (event.type === "sources") {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            const unique = event.sources.filter(
+              (s, i, arr) => arr.findIndex(x => x.material_id === s.material_id) === i
+            );
+            next[next.length - 1] = { ...last, sources: unique };
+            return next;
+          });
         }
       }
     } catch (err) {
