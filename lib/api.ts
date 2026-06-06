@@ -142,6 +142,7 @@ export async function* askStream(
   content: string,
   conversation_id: string,
   attachmentIds: string[] = [],
+  signal?: AbortSignal,
 ): AsyncIterable<StreamEvent> {
   const request: AskRequest = {
     content,
@@ -153,6 +154,7 @@ export async function* askStream(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
+    signal,
   });
 
   if (!response.ok || !response.body) {
@@ -162,10 +164,14 @@ export async function* askStream(
   yield* readStream(response);
 }
 
-export async function* regenerateStream(conversation_id: string): AsyncIterable<StreamEvent> {
+export async function* regenerateStream(
+  conversation_id: string,
+  signal?: AbortSignal,
+): AsyncIterable<StreamEvent> {
   const response = await fetch(`${SESSIONS_ENDPOINT}/${conversation_id}/regenerate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal,
   });
 
   if (!response.ok || !response.body) {

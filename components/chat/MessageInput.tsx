@@ -1,5 +1,12 @@
 "use client";
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+  KeyboardEvent,
+} from "react";
 import { uploadAttachment } from "@/lib/api";
 import type { AttachmentPublic } from "@/lib/types";
 
@@ -14,6 +21,13 @@ interface PendingAttachment {
 interface Props {
   onSubmit: (query: string, attachmentIds: string[], attachments: AttachmentPublic[]) => void;
   disabled?: boolean;
+  isGenerating?: boolean;
+  onStop?: () => void;
+}
+
+export interface MessageInputHandle {
+  /** Repopulate the input with a previously-sent prompt (used when a stream is stopped). */
+  restore: (text: string, attachments: AttachmentPublic[]) => void;
 }
 
 function FileChip({
@@ -58,7 +72,10 @@ function FileChip({
   );
 }
 
-export default function MessageInput({ onSubmit, disabled }: Props) {
+const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput(
+  { onSubmit, disabled, isGenerating, onStop }: Props,
+  ref,
+) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
@@ -70,6 +87,23 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    restore: (text: string, attachments: AttachmentPublic[]) => {
+      setValue(text);
+      // The attachments were already uploaded, so rebuild them as ready chips
+      // directly from the AttachmentPublic objects — no re-upload needed.
+      setPendingAttachments(
+        attachments.map((attachment) => ({
+          clientKey: crypto.randomUUID(),
+          fileName: attachment.file_name,
+          status: "ready",
+          attachment,
+        })),
+      );
+      textareaRef.current?.focus();
+    },
+  }));
 
   useEffect(() => {
     if (!disabled) textareaRef.current?.focus();
@@ -215,18 +249,33 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-            aria-label="Send"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          </button>
+          {isGenerating ? (
+            <button
+              type="button"
+              onClick={onStop}
+              className="shrink-0 text-[#a78bfa] hover:text-[#c4b5fd] transition-colors"
+              aria-label="Stop generating"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+              aria-label="Send"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          )}
         </div>
       </form>
     </div>
   );
-}
+});
+
+export default MessageInput;

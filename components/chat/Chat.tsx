@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl } from "@/lib/api";
 import type { AttachmentPublic, Message, MessagePublic, MessageRole } from "@/lib/types";
 import MessageList from "./MessageList";
-import MessageInput from "./MessageInput";
+import MessageInput, { type MessageInputHandle } from "./MessageInput";
 import { useChatContext } from "@/lib/chat-context";
 
 interface ChatProps {
@@ -15,9 +15,12 @@ export default function Chat({ conversationId }: ChatProps) {
   const router = useRouter();
   const { refreshConversations, messages, setMessages, activeConvId, setActiveConvId } = useChatContext();
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<MessageInputHandle>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const [previewing, setPreviewing] = useState<AttachmentPublic | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
@@ -108,11 +111,15 @@ export default function Chat({ conversationId }: ChatProps) {
   ) => {
     setError(null);
     setLoading(true);
+    setStreaming(true);
     setMessages((prev) => [
       ...prev,
       { role: "user", content: query, attachments },
       { role: "assistant", content: "" },
     ]);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     let targetConvId = activeConvId;
     let isNewConv = false;
@@ -125,7 +132,7 @@ export default function Chat({ conversationId }: ChatProps) {
         isNewConv = true;
       }
 
-      for await (const event of askStream(query, targetConvId, attachmentIds)) {
+      for await (const event of askStream(query, targetConvId, attachmentIds, controller.signal)) {
         if (event.type === "status") {
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
@@ -148,8 +155,18 @@ export default function Chat({ conversationId }: ChatProps) {
         router.replace(`/chat/${targetConvId}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      if (controller.signal.aborted) {
+        // Stopped by the user: discard the in-progress turn (the just-added user +
+        // assistant bubbles) and restore the prompt so it can be edited and resent.
+        // The backend persists nothing for a cancelled stream, so this stays consistent.
+        setMessages((prev) => prev.slice(0, -2));
+        inputRef.current?.restore(query, attachments);
+      } else {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      }
     } finally {
+      abortRef.current = null;
+      setStreaming(false);
       setLoading(false);
       setStatusMessage(null);
     }
@@ -159,6 +176,9 @@ export default function Chat({ conversationId }: ChatProps) {
     if (!activeConvId) return;
     setError(null);
     setLoading(true);
+    setStreaming(true);
+    // Snapshot the current messages so a stop can restore the previous answer untouched.
+    const snapshot = messages;
     setMessages((prev) => {
       const next = [...prev];
       const last = next[next.length - 1];
@@ -166,8 +186,12 @@ export default function Chat({ conversationId }: ChatProps) {
       next[next.length - 1] = { role: "assistant", content: "" };
       return next;
     });
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      for await (const event of regenerateStream(activeConvId)) {
+      for await (const event of regenerateStream(activeConvId, controller.signal)) {
         if (event.type === "status") {
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
@@ -182,10 +206,23 @@ export default function Chat({ conversationId }: ChatProps) {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error during regeneration");
+      if (controller.signal.aborted) {
+        // Stopped by the user: the backend kept the original answer (it only commits a
+        // regeneration at the very end), so restore the pre-regeneration view.
+        setMessages(snapshot);
+      } else {
+        setError(err instanceof Error ? err.message : "Unknown error during regeneration");
+      }
     } finally {
+      abortRef.current = null;
+      setStreaming(false);
       setLoading(false);
+      setStatusMessage(null);
     }
+  };
+
+  const handleStop = () => {
+    abortRef.current?.abort();
   };
 
   const canRegenerate =
@@ -237,7 +274,13 @@ export default function Chat({ conversationId }: ChatProps) {
           </div>
 
           <div className="px-6 pb-7">
-            <MessageInput onSubmit={handleAsk} disabled={loading} />
+            <MessageInput
+              ref={inputRef}
+              onSubmit={handleAsk}
+              disabled={loading || streaming}
+              isGenerating={streaming}
+              onStop={handleStop}
+            />
           </div>
         </div>
       </div>
