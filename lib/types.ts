@@ -42,6 +42,13 @@ export interface AskRequest {
   content: string;
   conversation_id?: string;
   attachment_ids?: string[];
+  output_format_id?: string;
+}
+
+export interface OutputFormatPublic {
+  id: string;
+  name: string;
+  description: string | null;
 }
 
 export interface Conversation {
@@ -75,6 +82,7 @@ export interface Material {
   created_at: string;
 }
 
+
 export interface CourseCreate {
   title: string;
   description?: string;
@@ -83,4 +91,21 @@ export interface CourseCreate {
 export interface CourseUpdate {
   title?: string;
   description?: string;
+}
+
+export interface SystemPromptSummary {
+  id: string;
+  title: string | null;
+}
+
+export interface UserSettings {
+  user_id: string;
+  custom_system_prompt: string | null;
+  selected_system_prompt_id: string | null;
+  updated_at: string | null;
+}
+
+export interface UserSettingsUpdate {
+  custom_system_prompt?: string | null;
+  selected_system_prompt_id?: string | null;
 }
