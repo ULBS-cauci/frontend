@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { uploadAttachment, getSystemPrompts, getUserSettings, updateUserSettings } from "@/lib/api";
 import type { AttachmentPublic, SystemPromptSummary } from "@/lib/types";
+import { useChatContext } from "@/lib/chat-context";
 
 interface PendingAttachment {
   clientKey: string;
@@ -12,7 +13,7 @@ interface PendingAttachment {
 }
 
 interface Props {
-  onSubmit: (query: string, attachmentIds: string[], attachments: AttachmentPublic[]) => void;
+  onSubmit: (query: string, attachmentIds: string[], attachments: AttachmentPublic[], outputFormatId: string) => void;
   disabled?: boolean;
 }
 
@@ -67,11 +68,14 @@ function Check() {
 }
 
 export default function MessageInput({ onSubmit, disabled }: Props) {
+  const { outputFormats } = useChatContext();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
+  const [outputFormatId, setOutputFormatId] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [submenuOpen, setSubmenuOpen] = useState(false);
+  const [outputSubmenuOpen, setOutputSubmenuOpen] = useState(false);
   const [prompts, setPrompts] = useState<SystemPromptSummary[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const [promptsLoading, setPromptsLoading] = useState(false);
@@ -119,10 +123,11 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
         setSubmenuOpen(false);
+        setOutputSubmenuOpen(false);
       }
     };
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape") { setMenuOpen(false); setSubmenuOpen(false); }
+      if (e.key === "Escape") { setMenuOpen(false); setSubmenuOpen(false); setOutputSubmenuOpen(false); }
     };
     document.addEventListener("mousedown", closeIfOutside);
     document.addEventListener("focusin", closeIfOutside);
@@ -134,7 +139,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
     };
   }, [menuOpen]);
 
-  const closeMenu = () => { setMenuOpen(false); setSubmenuOpen(false); };
+  const closeMenu = () => { setMenuOpen(false); setSubmenuOpen(false); setOutputSubmenuOpen(false); };
 
   const handleUploadClick = () => {
     closeMenu();
@@ -168,7 +173,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
 
   const submit = () => {
     if (!canSubmit) return;
-    onSubmit(value.trim(), readyIds, readyAttachments);
+    onSubmit(value.trim(), readyIds, readyAttachments, outputFormatId);
     setValue("");
     setPendingAttachments([]);
     textareaRef.current?.focus();
@@ -288,16 +293,17 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                   Upload a document
                 </button>
 
+                {/* Customise → system prompt submenu */}
                 <div
                   className="relative"
-                  onMouseEnter={() => setSubmenuOpen(true)}
+                  onMouseEnter={() => { setSubmenuOpen(true); setOutputSubmenuOpen(false); }}
                   onMouseLeave={() => setSubmenuOpen(false)}
                 >
                   <button
                     type="button"
                     aria-haspopup="true"
                     aria-expanded={submenuOpen}
-                    onFocus={() => setSubmenuOpen(true)}
+                    onFocus={() => { setSubmenuOpen(true); setOutputSubmenuOpen(false); }}
                     className={`flex w-full items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] transition-colors ${submenuOpen ? "bg-[rgba(232,228,240,0.07)]" : "hover:bg-[rgba(232,228,240,0.07)]"}`}
                   >
                     <span className="flex items-center gap-2.5">
@@ -331,7 +337,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                           <p className="px-3 py-2 text-[13px] text-[rgba(232,228,240,0.4)]">Loading…</p>
                         )}
                         {promptsError && (
-                          <p className="px-3 py-2 text-[13px] text-[#f87171]">Couldn’t load prompts.</p>
+                          <p className="px-3 py-2 text-[13px] text-[#f87171]">Couldn't load prompts.</p>
                         )}
                         {!promptsLoading && !promptsError && prompts.length === 0 && (
                           <p className="px-3 py-2 text-[13px] text-[rgba(232,228,240,0.4)]">No prompts available.</p>
@@ -346,6 +352,70 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                           >
                             <span className="truncate">{p.title ?? "Untitled"}</span>
                             {selectedPromptId === p.id && <Check />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Output format submenu */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => { setOutputSubmenuOpen(true); setSubmenuOpen(false); }}
+                  onMouseLeave={() => setOutputSubmenuOpen(false)}
+                >
+                  <button
+                    type="button"
+                    aria-haspopup="true"
+                    aria-expanded={outputSubmenuOpen}
+                    onFocus={() => { setOutputSubmenuOpen(true); setSubmenuOpen(false); }}
+                    className={`flex w-full items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] transition-colors ${outputSubmenuOpen ? "bg-[rgba(232,228,240,0.07)]" : "hover:bg-[rgba(232,228,240,0.07)]"}`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                      </svg>
+                      Output format
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+
+                  {outputSubmenuOpen && (
+                    <div className="absolute bottom-0 left-full pl-1.5">
+                      <div
+                        style={{ scrollbarWidth: "none" }}
+                        className="w-60 max-h-80 overflow-y-auto rounded-2xl border border-[rgba(232,228,240,0.12)] bg-[#1c1a24] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.55)] [&::-webkit-scrollbar]:hidden"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => { setOutputFormatId(""); closeMenu(); }}
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.55)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
+                        >
+                          Default
+                          {outputFormatId === "" && <Check />}
+                        </button>
+
+                        {outputFormats.length === 0 && (
+                          <p className="px-3 py-2 text-[13px] text-[rgba(232,228,240,0.4)]">No formats available.</p>
+                        )}
+
+                        {outputFormats.map((f) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => { setOutputFormatId(f.id); closeMenu(); }}
+                            className={`flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] transition-colors ${outputFormatId === f.id ? "bg-[rgba(124,106,247,0.12)] text-[#c4b5fd]" : "text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)]"}`}
+                          >
+                            <span className="truncate capitalize">{f.name.replace(/_/g, " ")}</span>
+                            {outputFormatId === f.id && <Check />}
                           </button>
                         ))}
                       </div>

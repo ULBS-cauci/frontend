@@ -29,6 +29,13 @@ export interface AskRequest {
   content: string;
   conversation_id?: string;
   attachment_ids?: string[];
+  output_format_id?: string;
+}
+
+export interface OutputFormatPublic {
+  id: string;
+  name: string;
+  description: string | null;
 }
 
 export interface Conversation {
@@ -60,6 +67,7 @@ export interface Material {
   object_storage_key: string | null;
   created_at: string;
 }
+
 
 export interface CourseCreate {
   title: string;

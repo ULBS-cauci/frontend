@@ -1,5 +1,5 @@
 import { config } from "./config";
-import { AskRequest, AttachmentPublic, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material, SystemPromptSummary, UserSettings, UserSettingsUpdate } from "./types";
+import { AskRequest, AttachmentPublic, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material, OutputFormatPublic, SystemPromptSummary, UserSettings, UserSettingsUpdate } from "./types";
 
 const SESSIONS_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions`;
 const ASK_ENDPOINT = `${SESSIONS_ENDPOINT}/ask`;
@@ -161,15 +161,41 @@ async function* readStream(response: Response): AsyncIterable<StreamEvent> {
   }
 }
 
+export async function gradeAnswer(
+  question: string,
+  referenceAnswer: string,
+  studentAnswer: string,
+): Promise<{ correct: boolean; feedback: string }> {
+  const res = await fetch(`${SESSIONS_ENDPOINT}/grade-answer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      question,
+      reference_answer: referenceAnswer,
+      student_answer: studentAnswer,
+    }),
+  });
+  if (!res.ok) throw new Error(`Grading failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getOutputFormats(): Promise<OutputFormatPublic[]> {
+  const res = await fetch(`${SESSIONS_ENDPOINT}/output-formats`);
+  if (!res.ok) throw new Error(`Failed to fetch output formats: ${res.status}`);
+  return res.json();
+}
+
 export async function* askStream(
   content: string,
   conversation_id: string,
   attachmentIds: string[] = [],
+  outputFormatId?: string,
 ): AsyncIterable<StreamEvent> {
   const request: AskRequest = {
     content,
     conversation_id,
     ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
+    ...(outputFormatId ? { output_format_id: outputFormatId } : {}),
   };
 
   const response = await fetch(ASK_ENDPOINT, {
