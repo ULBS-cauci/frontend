@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
-import type { BlockRendererProps } from "./types";
+import type { MessageRendererProps } from "./rendererTypes";
 
 let initialized = false;
 
@@ -29,7 +29,7 @@ async function getMermaid() {
   return m;
 }
 
-export default function MermaidBlock({ content, streaming }: BlockRendererProps) {
+export default function Mermaid({ content, streaming }: MessageRendererProps) {
   const uid = useId();
   const renderSeq = useRef(0);
   const [svg, setSvg] = useState<string | null>(null);

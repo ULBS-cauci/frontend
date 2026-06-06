@@ -1,7 +1,7 @@
 "use client";
-import type { BlockRendererProps } from "./types";
+import type { MessageRendererProps } from "./rendererTypes";
 
-export default function BlockPlaceholder({ content, streaming }: BlockRendererProps) {
+export default function MessageTypePlaceholder({ content, streaming }: MessageRendererProps) {
   if (streaming) {
     return (
       <div className="my-3 rounded-xl bg-[#141219] border border-[rgba(124,106,247,0.2)] p-4 animate-pulse">

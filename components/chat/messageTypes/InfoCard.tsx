@@ -1,7 +1,7 @@
 "use client";
 import { useMemo } from "react";
-import type { BlockRendererProps } from "./types";
-import BlockPlaceholder from "./BlockPlaceholder";
+import type { MessageRendererProps } from "./rendererTypes";
+import MessageTypePlaceholder from "./MessageTypePlaceholder";
 
 interface InfoCard {
   title: string;
@@ -9,7 +9,7 @@ interface InfoCard {
   points?: string[];
 }
 
-export default function InfoCardBlock({ content, streaming }: BlockRendererProps) {
+export default function InfoCard({ content, streaming }: MessageRendererProps) {
   const card = useMemo<InfoCard | null>(() => {
     try {
       return JSON.parse(content);
@@ -19,7 +19,7 @@ export default function InfoCardBlock({ content, streaming }: BlockRendererProps
   }, [content]);
 
   if (streaming || !card) {
-    return <BlockPlaceholder content={content} streaming={streaming} />;
+    return <MessageTypePlaceholder content={content} streaming={streaming} />;
   }
 
   return (

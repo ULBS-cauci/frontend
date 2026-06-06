@@ -1,9 +1,9 @@
 import type { ComponentType } from "react";
 
-export interface BlockRendererProps {
+export interface MessageRendererProps {
   content: string;
   streaming: boolean;
   conversationId?: string;
 }
 
-export type BlockRenderer = ComponentType<BlockRendererProps>;
+export type MessageRenderer = ComponentType<MessageRendererProps>;

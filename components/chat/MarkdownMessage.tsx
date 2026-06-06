@@ -1,7 +1,7 @@
 "use client";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
-import { BLOCK_RENDERERS } from "./blocks/registry";
+import { MESSAGE_RENDERERS } from "./messageTypes/registry";
 
 interface Props {
   content: string;
@@ -23,7 +23,7 @@ export default function MarkdownMessage({
 
     code({ className, children }) {
       const lang = /language-(\w+)/.exec(className ?? "")?.[1];
-      const Renderer = lang ? BLOCK_RENDERERS[lang] : undefined;
+      const Renderer = lang ? MESSAGE_RENDERERS[lang] : undefined;
       if (Renderer) {
         const raw = String(children ?? "").replace(/\n$/, "");
         return (

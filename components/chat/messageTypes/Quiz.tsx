@@ -1,8 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
 import { gradeAnswer } from "@/lib/api";
-import type { BlockRendererProps } from "./types";
-import BlockPlaceholder from "./BlockPlaceholder";
+import type { MessageRendererProps } from "./rendererTypes";
+import MessageTypePlaceholder from "./MessageTypePlaceholder";
 
 interface TrueFalse {
   kind: "true_false";
@@ -30,7 +30,7 @@ type QuizQuestion = TrueFalse | FreeText | MultipleChoice;
 
 type GradeResult = { correct: boolean; feedback: string };
 
-export default function QuizBlock({ content, streaming }: BlockRendererProps) {
+export default function Quiz({ content, streaming }: MessageRendererProps) {
   const question = useMemo<QuizQuestion | null>(() => {
     try {
       return JSON.parse(content);
@@ -45,7 +45,7 @@ export default function QuizBlock({ content, streaming }: BlockRendererProps) {
   const [result, setResult] = useState<GradeResult | null>(null);
 
   if (streaming || !question) {
-    return <BlockPlaceholder content={content} streaming={streaming} />;
+    return <MessageTypePlaceholder content={content} streaming={streaming} />;
   }
 
   const userAnswer =
