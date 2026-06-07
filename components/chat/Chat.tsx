@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { askStream, regenerateStream, getMessages, createConversation, getAttachmentPreviewUrl } from "@/lib/api";
+import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl } from "@/lib/api";
 import type { AttachmentPublic, Message, MessagePublic, MessageRole } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput, { type MessageInputHandle } from "./MessageInput";
@@ -269,7 +269,7 @@ export default function Chat({ conversationId }: ChatProps) {
           </div>
           <div className="flex-1 overflow-hidden">
             <FilePreview
-              url={getAttachmentPreviewUrl(previewing.id)}
+              url={getAttachmentDownloadUrl(previewing.id)}
               fileName={previewing.file_name}
             />
           </div>
