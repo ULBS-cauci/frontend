@@ -1,11 +1,12 @@
 import { config } from "./config";
-import { AskRequest, AttachmentPublic, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material, StreamEvent } from "./types";
+import { AskRequest, AttachmentPublic, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material, StreamEvent, OutputFormatPublic, SystemPromptSummary, UserSettings, UserSettingsUpdate } from "./types";
 
 const SESSIONS_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions`;
 const ASK_ENDPOINT = `${SESSIONS_ENDPOINT}/ask`;
 const ATTACHMENT_UPLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments/upload`;
 const ATTACHMENT_DOWNLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments`;
 const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
+const USER_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/user`;
 
 export function getAttachmentDownloadUrl(attachmentId: string): string {
   return `${ATTACHMENT_DOWNLOAD_ENDPOINT}/${encodeURIComponent(attachmentId)}`;
@@ -101,6 +102,28 @@ export async function deleteCourse(courseId: string): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete course: ${res.status}`);
 }
 
+export async function getSystemPrompts(): Promise<SystemPromptSummary[]> {
+  const res = await fetch(`${USER_ENDPOINT}/system-prompts`);
+  if (!res.ok) throw new Error(`Failed to fetch system prompts: ${res.status}`);
+  return res.json();
+}
+
+export async function getUserSettings(): Promise<UserSettings> {
+  const res = await fetch(`${USER_ENDPOINT}/settings`);
+  if (!res.ok) throw new Error(`Failed to fetch settings: ${res.status}`);
+  return res.json();
+}
+
+export async function updateUserSettings(data: UserSettingsUpdate): Promise<UserSettings> {
+  const res = await fetch(`${USER_ENDPOINT}/settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Failed to update settings: ${res.status}`);
+  return res.json();
+}
+
 export async function getMaterials(courseId: string): Promise<Material[]> {
   const res = await fetch(`${COURSES_ENDPOINT}/${courseId}/materials`);
   if (!res.ok) throw new Error(`Failed to fetch materials: ${res.status}`);
@@ -146,11 +169,36 @@ async function* readStream(response: Response): AsyncIterable<StreamEvent> {
   }
 }
 
+export async function gradeAnswer(
+  question: string,
+  referenceAnswer: string,
+  studentAnswer: string,
+): Promise<{ correct: boolean; feedback: string }> {
+  const res = await fetch(`${SESSIONS_ENDPOINT}/grade-answer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      question,
+      reference_answer: referenceAnswer,
+      student_answer: studentAnswer,
+    }),
+  });
+  if (!res.ok) throw new Error(`Grading failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getOutputFormats(): Promise<OutputFormatPublic[]> {
+  const res = await fetch(`${SESSIONS_ENDPOINT}/output-formats`);
+  if (!res.ok) throw new Error(`Failed to fetch output formats: ${res.status}`);
+  return res.json();
+}
+
 export async function* askStream(
   content: string,
   conversation_id: string,
   attachmentIds: string[] = [],
   forceCurrentCourse = false,
+  outputFormatId?: string,
   signal?: AbortSignal,
 ): AsyncIterable<StreamEvent> {
   const request: AskRequest = {
@@ -158,6 +206,7 @@ export async function* askStream(
     conversation_id,
     ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
     ...(forceCurrentCourse ? { force_current_course: true } : {}),
+    ...(outputFormatId ? { output_format_id: outputFormatId } : {}),
   };
 
   const response = await fetch(ASK_ENDPOINT, {

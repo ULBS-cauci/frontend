@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl, getCourse } from "@/lib/api";
 import type { AttachmentPublic, Message, MessagePublic, MessageRole, PendingContextSwitch } from "@/lib/types";
@@ -25,7 +25,10 @@ export default function Chat({ conversationId }: ChatProps) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingSwitch, setPendingSwitch] = useState<PendingContextSwitch | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastUserRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollIntent = useRef<"bottom" | "user-top" | null>(null);
   const streamAbortControllerRef = useRef<AbortController | null>(null);
 
   const [previewing, setPreviewing] = useState<AttachmentPublic | null>(null);
@@ -98,6 +101,7 @@ export default function Chat({ conversationId }: ChatProps) {
           attachments: m.attachments,
         }));
         setMessages(formatted);
+        scrollIntent.current = "bottom";
       })
       .catch((err) => {
         if (cancelled) return;
@@ -143,6 +147,7 @@ export default function Chat({ conversationId }: ChatProps) {
     query: string,
     attachmentIds: string[] = [],
     attachments: AttachmentPublic[] = [],
+    outputFormatId = "",
     forceCurrentCourse = false,
     addUserBubble = true,
   ) => {
@@ -151,6 +156,7 @@ export default function Chat({ conversationId }: ChatProps) {
     setLoading(true);
 
     if (addUserBubble) {
+      scrollIntent.current = "user-top";
       setMessages((prev) => [
         ...prev,
         { role: "user", content: query, attachments },
@@ -171,7 +177,7 @@ export default function Chat({ conversationId }: ChatProps) {
         isNewConv = true;
       }
 
-      for await (const event of askStream(query, targetConvId, attachmentIds, forceCurrentCourse)) {
+      for await (const event of askStream(query, targetConvId, attachmentIds, forceCurrentCourse, outputFormatId || undefined)) {
         if (event.type === "status") {
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
@@ -188,7 +194,10 @@ export default function Chat({ conversationId }: ChatProps) {
             const next = [...prev];
             const last = next[next.length - 1];
             if (!last) return next;
-            next[next.length - 1] = { ...last, sources: event.sources };
+            const unique = event.sources.filter(
+              (s, i, arr) => arr.findIndex(x => x.material_id === s.material_id) === i
+            );
+            next[next.length - 1] = { ...last, sources: unique };
             return next;
           });
         } else if (event.type === "context_switch_request") {
@@ -274,7 +283,7 @@ export default function Chat({ conversationId }: ChatProps) {
     const snap = pendingSwitch;
     setPendingSwitch(null);
     // Re-submit with force=true — backend returns a graceful refusal without running RAG.
-    handleAsk(snap.originalQuery, snap.originalAttachmentIds, [], true, false);
+    handleAsk(snap.originalQuery, snap.originalAttachmentIds, [], "", true, false);
   };
 
   const handleRegenerate = async () => {
@@ -301,6 +310,17 @@ export default function Chat({ conversationId }: ChatProps) {
             next[next.length - 1] = { role: "assistant", content: last.content + event.content };
             return next;
           });
+        } else if (event.type === "sources") {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            const unique = event.sources.filter(
+              (s, i, arr) => arr.findIndex(x => x.material_id === s.material_id) === i
+            );
+            next[next.length - 1] = { ...last, sources: unique };
+            return next;
+          });
         }
       }
     } catch (err) {
@@ -317,8 +337,30 @@ export default function Chat({ conversationId }: ChatProps) {
     messages[messages.length - 1].role === "assistant" &&
     messages[messages.length - 1].content !== "";
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  useLayoutEffect(() => {
+    if (scrollIntent.current === "bottom") {
+      const container = scrollContainerRef.current;
+      const bottom = bottomRef.current;
+      if (container && bottom) {
+        container.scrollTop =
+          container.scrollTop +
+          bottom.getBoundingClientRect().top -
+          container.getBoundingClientRect().top -
+          container.clientHeight;
+      }
+    } else if (scrollIntent.current === "user-top") {
+      const container = scrollContainerRef.current;
+      const el = lastUserRef.current;
+      if (container && el) {
+        const offset = Math.round(container.clientHeight / 3);
+        container.scrollTop =
+          el.getBoundingClientRect().top -
+          container.getBoundingClientRect().top +
+          container.scrollTop -
+          offset;
+      }
+    }
+    scrollIntent.current = null;
   }, [messages]);
 
   return (
@@ -331,7 +373,7 @@ export default function Chat({ conversationId }: ChatProps) {
             <CourseSelector />
           </div>
 
-          <div className="flex-1 overflow-y-auto px-10 pt-4 pb-6">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-10 pt-4 pb-6">
             {messages.length === 0 && !pendingSwitch ? (
               <div className="h-full flex items-start justify-start">
                 <p className="text-[rgba(232,228,240,0.45)] text-base tracking-[-0.01em]">
@@ -344,6 +386,9 @@ export default function Chat({ conversationId }: ChatProps) {
                   messages={messages}
                   onRegenerate={canRegenerate ? handleRegenerate : undefined}
                   onAttachmentClick={setPreviewing}
+                  streamingActive={loading}
+                  conversationId={activeConvId}
+                  lastUserRef={lastUserRef}
                 />
                 {pendingSwitch && (
                   <ContextSwitchBanner
@@ -366,6 +411,7 @@ export default function Chat({ conversationId }: ChatProps) {
                   </p>
                 )}
                 <div ref={bottomRef} />
+                {loading && <div className="h-screen shrink-0" aria-hidden="true" />}
               </>
             )}
           </div>
