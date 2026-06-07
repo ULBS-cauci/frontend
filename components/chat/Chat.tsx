@@ -13,7 +13,7 @@ interface ChatProps {
 
 export default function Chat({ conversationId }: ChatProps) {
   const router = useRouter();
-  const { refreshConversations, messages, setMessages, activeConvId, setActiveConvId } = useChatContext();
+  const { refreshConversations, bumpConversation, messages, setMessages, activeConvId, setActiveConvId } = useChatContext();
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -153,6 +153,8 @@ export default function Chat({ conversationId }: ChatProps) {
       if (isNewConv) {
         await refreshConversations();
         router.replace(`/chat/${targetConvId}`);
+      } else if (targetConvId) {
+        bumpConversation(targetConvId);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -248,7 +250,7 @@ export default function Chat({ conversationId }: ChatProps) {
                   lastUserRef={lastUserRef}
                 />
                 {loading && (messages[messages.length - 1]?.content === "" || statusMessage) && (
-                  <div className="mt-1 pl-3 border-l-2 border-[rgba(167,139,250,0.5)] flex items-center gap-2.5">
+                  <div className="mt-4 pl-3 border-l-2 border-[rgba(167,139,250,0.5)] flex items-center gap-2.5">
                     <span className="w-2 h-2 rounded-full bg-[rgba(167,139,250,0.7)] animate-pulse shrink-0" />
                     <span className="text-sm text-[rgba(232,228,240,0.7)] italic">
                       {statusMessage ?? "Thinking..."}
@@ -265,7 +267,7 @@ export default function Chat({ conversationId }: ChatProps) {
             )}
           </div>
 
-          <div className="px-6 pb-7">
+          <div className="px-6 ">
             <MessageInput onSubmit={handleAsk} disabled={loading} />
           </div>
         </div>

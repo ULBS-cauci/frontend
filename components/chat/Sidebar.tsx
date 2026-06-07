@@ -47,7 +47,10 @@ export default function Sidebar({ role = "professor" }: Props) {
       <div
         className="relative z-[1] w-full h-full flex flex-col bg-[#0c0b10] rounded-r-3xl border-r border-t border-b border-[rgba(232,228,240,0.07)]"
       >
-        <div className={`flex pt-6 px-3 ${isOpen ? "justify-end" : "justify-center"}`}>
+        <div className={`flex pt-6 px-3 items-center ${isOpen ? "justify-between" : "justify-center"}`}>
+          {isOpen && (
+           <></>
+          )}
           <button
             onClick={() => setIsOpen((v) => !v)}
             className="text-[rgba(232,228,240,0.45)] hover:text-[#e8e4f0] transition-colors p-1.5 rounded-lg hover:bg-[rgba(232,228,240,0.06)]"
@@ -78,7 +81,7 @@ export default function Sidebar({ role = "professor" }: Props) {
                   placeholder="Search chats"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-[rgba(232,228,240,0.06)] text-[#e8e4f0] text-sm placeholder:text-[rgba(232,228,240,0.35)] rounded-lg pl-8 pr-3 py-2 outline-none"
+                  className="w-full bg-[rgba(232,228,240,0.06)] text-[#e8e4f0] text-sm placeholder:text-[rgba(232,228,240,0.35)] rounded-xl pl-8 pr-3 py-2 outline-none"
                 />
               </div>
             </div>
@@ -115,21 +118,28 @@ export default function Sidebar({ role = "professor" }: Props) {
                 <p className="text-[rgba(232,228,240,0.35)] text-xs px-3 py-2 uppercase tracking-widest">
                   History
                 </p>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col gap-1.5">
                   {filtered.length === 0 ? (
                     <p className="text-[rgba(232,228,240,0.35)] text-sm px-3 py-2">
                       No chats found.
                     </p>
                   ) : (
-                    filtered.map((chat) => (
-                      <Link
-                        key={chat.id}
-                        href={`/chat/${chat.id}`}
-                        className="text-sm text-[rgba(232,228,240,0.75)] px-3 py-2 rounded-lg hover:bg-[rgba(232,228,240,0.06)] transition-colors truncate block"
-                      >
-                        {chat.title}
-                      </Link>
-                    ))
+                    filtered.map((chat) => {
+                      const isActive = pathname === `/chat/${chat.id}`;
+                      return (
+                        <Link
+                          key={chat.id}
+                          href={`/chat/${chat.id}`}
+                          className={`relative flex items-center px-3 py-2 rounded-xl text-sm transition-colors truncate ${
+                            isActive
+                              ? "bg-[rgba(232,228,240,0.06)] text-[#e8e4f0]"
+                              : "text-[rgba(232,228,240,0.75)] hover:bg-[rgba(232,228,240,0.06)]"
+                          }`}
+                        >
+                          <span className="truncate">{chat.title}</span>
+                        </Link>
+                      );
+                    })
                   )}
                 </div>
               </div>

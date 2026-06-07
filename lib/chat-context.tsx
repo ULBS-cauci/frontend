@@ -7,6 +7,7 @@ import { getConversations, getOutputFormats } from "./api";
 interface ChatContextType {
   conversations: Conversation[];
   refreshConversations: () => Promise<void>;
+  bumpConversation: (id: string) => void;
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   activeConvId: string | undefined;
@@ -32,13 +33,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const bumpConversation = useCallback((id: string) => {
+    setConversations((prev) => {
+      const idx = prev.findIndex((c) => c.id === id);
+      if (idx <= 0) return prev;
+      const next = [...prev];
+      const [conv] = next.splice(idx, 1);
+      return [conv, ...next];
+    });
+  }, []);
+
   useEffect(() => {
     refreshConversations();
     getOutputFormats().then(setOutputFormats).catch((err) => console.error("Failed to fetch output formats:", err));
   }, [refreshConversations]);
 
   return (
-    <ChatContext.Provider value={{ conversations, refreshConversations, messages, setMessages, activeConvId, setActiveConvId, outputFormats }}>
+    <ChatContext.Provider value={{ conversations, refreshConversations, bumpConversation, messages, setMessages, activeConvId, setActiveConvId, outputFormats }}>
       {children}
     </ChatContext.Provider>
   );
