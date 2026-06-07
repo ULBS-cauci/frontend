@@ -258,10 +258,11 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
                 e.stopPropagation();
                 onStop?.();
               }}
-              className="shrink-0 text-[#a78bfa] hover:text-[#c4b5fd] transition-colors"
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-[#7c6af7] text-white shadow-[0_0_12px_rgba(124,106,247,0.6)] hover:bg-[#8b7bf8] transition-colors animate-pulse"
               aria-label="Stop generating"
+              title="Stop generating"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="6" width="12" height="12" rx="2" />
               </svg>
             </button>
