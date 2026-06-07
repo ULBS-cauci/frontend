@@ -191,7 +191,7 @@ export default function Chat({ conversationId }: ChatProps) {
             const next = [...prev];
             const last = next[next.length - 1];
             if (!last) return next;
-            next[next.length - 1] = { role: "assistant", content: last.content + event.content };
+            next[next.length - 1] = { ...last, content: last.content + event.content };
             return next;
           });
         } else if (event.type === "sources") {

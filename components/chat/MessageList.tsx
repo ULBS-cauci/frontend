@@ -80,7 +80,7 @@ export default function MessageList({ messages, onRegenerate, onAttachmentClick,
                     {msg.sources.map((source) => (
                       <a
                         key={source.material_id}
-                        href={`${config.apiUrl}${source.download_url}`}
+                        href={new URL(source.download_url, config.apiUrl).toString()}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#7c6af7]/30 text-[#a78bfa] text-xs hover:border-[#7c6af7]/60 hover:text-[#c084fc] transition-colors"
