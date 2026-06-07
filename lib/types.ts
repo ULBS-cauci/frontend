@@ -1,5 +1,17 @@
 export type MessageRole = "user" | "assistant" | "system";
 
+export interface Source {
+  material_id: string;
+  file_name: string;
+  download_url: string;
+}
+
+export type StreamEvent =
+  | { type: "status"; message: string }
+  | { type: "chunk"; content: string }
+  | { type: "sources"; sources: Source[] }
+  | { type: "error"; message: string };
+
 export interface Course {
   id: string;
   title: string;
@@ -22,6 +34,7 @@ export interface Message {
   id?: string;
   role: MessageRole;
   content: string;
+  sources?: Source[];
   attachments?: AttachmentPublic[];
 }
 
@@ -54,6 +67,7 @@ export interface MessagePublic {
   content: string;
   output_format_id: string | null;
   created_at: string;
+  sources?: Source[];
   attachments: AttachmentPublic[];
 }
 
