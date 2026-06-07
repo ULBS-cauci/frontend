@@ -82,27 +82,58 @@ export default function FilePreview({ url, fileName }: Props) {
     );
   }
 
-  // office / other — no reliable in-browser renderer, so offer open + download.
+  // office / other — no reliable in-browser renderer, so offer download plus
+  // (for Office files) the Google / Microsoft online viewers. Those viewers fetch
+  // the file from their own servers, so they only work when `url` is reachable on
+  // the public internet (i.e. a deployed backend, not localhost).
+  const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+  const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`;
+
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center text-white/60">
+    <div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center text-white/60">
       <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <polyline points="14 2 14 8 20 8" />
       </svg>
       <p className="text-sm max-w-xs break-words" title={fileName}>{fileName}</p>
       <p className="text-xs text-white/35">This file type can&apos;t be previewed in the browser.</p>
-      <a
-        href={blobUrl}
-        download={fileName}
-        className="px-4 py-2 rounded-full text-sm bg-[#7c6af7] text-white hover:bg-[#8b7bf8] transition-colors inline-flex items-center gap-2"
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-        Download
-      </a>
+      <div className="flex flex-col items-stretch gap-2 mt-1 w-56">
+        <a
+          href={blobUrl}
+          download={fileName}
+          className="px-4 py-2 rounded-full text-sm bg-[#7c6af7] text-white hover:bg-[#8b7bf8] transition-colors inline-flex items-center justify-center gap-2"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Download
+        </a>
+        {kind === "office" && (
+          <>
+            <a
+              href={googleViewerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-full text-sm bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 transition-colors"
+            >
+              Open with Google Docs
+            </a>
+            <a
+              href={officeViewerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-full text-sm bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 transition-colors"
+            >
+              Open with Office Online
+            </a>
+            <p className="text-[11px] text-white/25 leading-snug">
+              Online viewers need the file to be publicly reachable — they won&apos;t load on localhost.
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
