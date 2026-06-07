@@ -18,6 +18,7 @@ interface Props {
  */
 export default function FilePreview({ url, fileName }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [mimeType, setMimeType] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
@@ -36,6 +37,7 @@ export default function FilePreview({ url, fileName }: Props) {
       .then((blob) => {
         if (cancelled) return;
         createdUrl = URL.createObjectURL(blob);
+        setMimeType(blob.type);
         setBlobUrl(createdUrl);
       })
       .catch(() => {
@@ -67,7 +69,16 @@ export default function FilePreview({ url, fileName }: Props) {
     );
   }
 
-  const kind = getFileKind(fileName);
+  // Decide how to render from the served MIME type — the backend converts Office
+  // files to PDF, so they arrive as application/pdf. Fall back to the filename
+  // extension when the server doesn't report a type.
+  const kind = mimeType.includes("pdf")
+    ? "pdf"
+    : mimeType.startsWith("image/")
+      ? "image"
+      : mimeType
+        ? "other"
+        : getFileKind(fileName);
 
   if (kind === "pdf") {
     return <iframe src={blobUrl} className="w-full h-full bg-white" title={fileName} />;
