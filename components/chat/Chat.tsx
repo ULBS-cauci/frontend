@@ -150,6 +150,7 @@ export default function Chat({ conversationId }: ChatProps) {
     outputFormatId = "",
     forceCurrentCourse = false,
     addUserBubble = true,
+    existingMessageId = "",
   ) => {
     setError(null);
     setPendingSwitch(null);
@@ -177,7 +178,7 @@ export default function Chat({ conversationId }: ChatProps) {
         isNewConv = true;
       }
 
-      for await (const event of askStream(query, targetConvId, attachmentIds, forceCurrentCourse, outputFormatId || undefined)) {
+      for await (const event of askStream(query, targetConvId, attachmentIds, forceCurrentCourse, outputFormatId || undefined, undefined, existingMessageId || undefined)) {
         if (event.type === "status") {
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
@@ -207,7 +208,9 @@ export default function Chat({ conversationId }: ChatProps) {
             detectedCourseName: event.detected_course_name,
             originalQuery: query,
             originalAttachmentIds: attachmentIds,
+            originalUserMessageId: event.user_message_id,
           });
+          return; // stop the stream loop — loading=false fires in the finally block
         }
       }
 
@@ -230,7 +233,7 @@ export default function Chat({ conversationId }: ChatProps) {
     setPendingSwitch(null);
     setError(null);
     setStatusMessage(null);
-    setMessages([]);                 // explicit wipe — no old-course content leaks through
+    setMessages([]);
     setLoading(true);
     setSelectedCourse(snap.detectedCourseId, snap.detectedCourseName);
 
@@ -244,7 +247,11 @@ export default function Chat({ conversationId }: ChatProps) {
           { role: "assistant", content: "" },
         ]);
 
-        for await (const event of askStream(snap.originalQuery, newConv.id, snap.originalAttachmentIds)) {
+        for await (const event of askStream(
+          snap.originalQuery,
+          newConv.id,
+          snap.originalAttachmentIds,
+        )) {
           if (event.type === "status") {
             setStatusMessage(event.message);
           } else if (event.type === "chunk") {
@@ -282,8 +289,9 @@ export default function Chat({ conversationId }: ChatProps) {
     if (!pendingSwitch) return;
     const snap = pendingSwitch;
     setPendingSwitch(null);
-    // Re-submit with force=true — backend returns a graceful refusal without running RAG.
-    handleAsk(snap.originalQuery, snap.originalAttachmentIds, [], "", true, false);
+    // Re-submit with force=true and the original message ID so the backend skips
+    // creating a duplicate user message, then short-circuits to a polite refusal.
+    handleAsk(snap.originalQuery, snap.originalAttachmentIds, [], "", true, false, snap.originalUserMessageId);
   };
 
   const handleRegenerate = async () => {

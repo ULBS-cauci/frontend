@@ -161,6 +161,7 @@ async function* readStream(response: Response): AsyncIterable<StreamEvent> {
           type: "context_switch_request",
           detected_course_id: parsed.detected_course_id,
           detected_course_name: parsed.detected_course_name,
+          user_message_id: parsed.user_message_id,
         };
       } else if (parsed.type === "error") {
         throw new Error(parsed.message);
@@ -200,6 +201,7 @@ export async function* askStream(
   forceCurrentCourse = false,
   outputFormatId?: string,
   signal?: AbortSignal,
+  existingMessageId?: string,
 ): AsyncIterable<StreamEvent> {
   const request: AskRequest = {
     content,
@@ -207,6 +209,7 @@ export async function* askStream(
     ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
     ...(forceCurrentCourse ? { force_current_course: true } : {}),
     ...(outputFormatId ? { output_format_id: outputFormatId } : {}),
+    ...(existingMessageId ? { existing_message_id: existingMessageId } : {}),
   };
 
   const response = await fetch(ASK_ENDPOINT, {

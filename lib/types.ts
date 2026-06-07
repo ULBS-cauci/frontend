@@ -6,18 +6,26 @@ export interface Source {
   download_url: string;
 }
 
+export type ContextSwitchRequestEvent = {
+  type: "context_switch_request";
+  detected_course_id: string;
+  detected_course_name: string;
+  user_message_id: string;
+};
+
 export type StreamEvent =
   | { type: "status"; message: string }
   | { type: "chunk"; content: string }
   | { type: "sources"; sources: Source[] }
   | { type: "error"; message: string }
-  | { type: "context_switch_request"; detected_course_id: string; detected_course_name: string };
+  | ContextSwitchRequestEvent;
 
 export interface PendingContextSwitch {
   detectedCourseId: string;
   detectedCourseName: string;
   originalQuery: string;
   originalAttachmentIds: string[];
+  originalUserMessageId: string;
 }
 
 export interface Course {
@@ -52,6 +60,7 @@ export interface AskRequest {
   attachment_ids?: string[];
   force_current_course?: boolean;
   output_format_id?: string;
+  existing_message_id?: string;
 }
 
 export interface OutputFormatPublic {
