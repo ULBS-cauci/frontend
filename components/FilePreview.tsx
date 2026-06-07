@@ -91,23 +91,18 @@ export default function FilePreview({ url, fileName }: Props) {
       </svg>
       <p className="text-sm max-w-xs break-words" title={fileName}>{fileName}</p>
       <p className="text-xs text-white/35">This file type can&apos;t be previewed in the browser.</p>
-      <div className="flex items-center gap-3">
-        <a
-          href={blobUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-4 py-2 rounded-full text-sm bg-[rgba(124,106,247,0.15)] border border-[rgba(124,106,247,0.35)] text-[#a78bfa] hover:bg-[rgba(124,106,247,0.25)] transition-colors"
-        >
-          Open
-        </a>
-        <a
-          href={blobUrl}
-          download={fileName}
-          className="px-4 py-2 rounded-full text-sm bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 transition-colors"
-        >
-          Download
-        </a>
-      </div>
+      <a
+        href={blobUrl}
+        download={fileName}
+        className="px-4 py-2 rounded-full text-sm bg-[#7c6af7] text-white hover:bg-[#8b7bf8] transition-colors inline-flex items-center gap-2"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        Download
+      </a>
     </div>
   );
 }
