@@ -1,11 +1,14 @@
 "use client";
-import ReactMarkdown from "react-markdown";
 import type { Message, AttachmentPublic } from "@/lib/types";
+import MarkdownMessage from "./MarkdownMessage";
 
 interface Props {
   messages: Message[];
   onRegenerate?: () => void;
   onAttachmentClick?: (attachment: AttachmentPublic) => void;
+  streamingActive?: boolean;
+  conversationId?: string;
+  lastUserRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 function AttachmentChip({
@@ -41,7 +44,9 @@ function AttachmentChip({
   );
 }
 
-export default function MessageList({ messages, onRegenerate, onAttachmentClick }: Props) {
+export default function MessageList({ messages, onRegenerate, onAttachmentClick, streamingActive, conversationId, lastUserRef }: Props) {
+  const lastUserIndex = messages.reduce((acc, msg, i) => (msg.role === "user" ? i : acc), -1);
+
   return (
     <div className="flex flex-col gap-4">
       {messages.map((msg, i) => {
@@ -51,13 +56,18 @@ export default function MessageList({ messages, onRegenerate, onAttachmentClick 
         return (
           <div
             key={msg.id ?? i}
+            ref={isUser && i === lastUserIndex ? lastUserRef : undefined}
             className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
           >
             <p className="text-[13px] text-[rgba(232,228,240,0.45)] mb-1.5 tracking-[0.03em]">
               {isUser ? "You" : "ULBS Coach"}
             </p>
-            <div className="bg-[#0c0b10] border border-[rgba(232,228,240,0.07)] rounded-[28px] px-5 py-4 text-[#e8e4f0] text-base leading-[1.7] max-w-[75%]">
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
+            <div className={`bg-[#0c0b10] border border-[rgba(232,228,240,0.07)] rounded-[28px] px-5 py-4 text-[#e8e4f0] text-base leading-[1.7] ${isUser ? "max-w-[75%]" : "max-w-[90%] w-full"}`}>
+              <MarkdownMessage
+                content={msg.content}
+                streaming={isLastAssistant && !!streamingActive}
+                conversationId={conversationId ?? undefined}
+              />
             </div>
             {isUser && hasAttachments && (
               <div className="flex flex-wrap gap-2 mt-2 justify-end max-w-[75%]">

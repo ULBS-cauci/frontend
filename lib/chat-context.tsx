@@ -1,8 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { Conversation, Message } from "./types";
-import { getConversations } from "./api";
+import { Conversation, Message, OutputFormatPublic } from "./types";
+import { getConversations, getOutputFormats } from "./api";
 
 interface ChatContextType {
   conversations: Conversation[];
@@ -11,6 +11,7 @@ interface ChatContextType {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   activeConvId: string | undefined;
   setActiveConvId: React.Dispatch<React.SetStateAction<string | undefined>>;
+  outputFormats: OutputFormatPublic[];
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -19,6 +20,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | undefined>(undefined);
+  const [outputFormats, setOutputFormats] = useState<OutputFormatPublic[]>([]);
 
   const refreshConversations = useCallback(async () => {
     try {
@@ -32,10 +34,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshConversations();
+    getOutputFormats().then(setOutputFormats).catch((err) => console.error("Failed to fetch output formats:", err));
   }, [refreshConversations]);
 
   return (
-    <ChatContext.Provider value={{ conversations, refreshConversations, messages, setMessages, activeConvId, setActiveConvId }}>
+    <ChatContext.Provider value={{ conversations, refreshConversations, messages, setMessages, activeConvId, setActiveConvId, outputFormats }}>
       {children}
     </ChatContext.Provider>
   );
