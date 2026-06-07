@@ -19,9 +19,8 @@ export default function ContextSwitchBanner({ pending, onSwitch, onStay }: Props
           </svg>
         </div>
         <p className="text-sm text-white/80 leading-relaxed">
-          Se pare că întrebarea ta are legătură cu cursul{" "}
-          <span className="text-[#a78bfa] font-medium">{pending.detectedCourseName}</span>.
-          Dorești să comuți pe acest curs?
+          It looks like your question is related to <span className="text-[#a78bfa] font-medium">{pending.detectedCourseName}</span>.
+          Would you like to switch to this course?
         </p>
       </div>
       <div className="flex gap-2 pl-10">
@@ -30,14 +29,14 @@ export default function ContextSwitchBanner({ pending, onSwitch, onStay }: Props
           onClick={onSwitch}
           className="px-3.5 py-1.5 rounded-lg bg-[#7c6af7]/20 hover:bg-[#7c6af7]/35 text-[#c4b5fd] text-sm font-medium transition-colors border border-[#7c6af7]/30"
         >
-          Da, comută pe {pending.detectedCourseName}
+          Yes, switch to {pending.detectedCourseName}
         </button>
         <button
           type="button"
           onClick={onStay}
           className="px-3.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.09] text-white/60 hover:text-white/80 text-sm transition-colors border border-white/[0.08]"
         >
-          Rămâi aici
+          Stay here
         </button>
       </div>
     </div>
