@@ -71,6 +71,9 @@ export default function Chat({ conversationId }: ChatProps) {
     attachmentIds: string[] = [],
     attachments: AttachmentPublic[] = [],
   ) => {
+    // Ignore re-entrant calls while a request is already streaming — guards against
+    // a duplicate POST /ask if a submit fires again before the first one settles.
+    if (abortRef.current) return;
     setError(null);
     setLoading(true);
     setStreaming(true);
@@ -136,6 +139,7 @@ export default function Chat({ conversationId }: ChatProps) {
 
   const handleRegenerate = async () => {
     if (!activeConvId) return;
+    if (abortRef.current) return;
     setError(null);
     setLoading(true);
     setStreaming(true);

@@ -251,8 +251,13 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
 
           {isGenerating ? (
             <button
+              key="stop"
               type="button"
-              onClick={onStop}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onStop?.();
+              }}
               className="shrink-0 text-[#a78bfa] hover:text-[#c4b5fd] transition-colors"
               aria-label="Stop generating"
             >
@@ -262,6 +267,7 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
             </button>
           ) : (
             <button
+              key="send"
               type="submit"
               disabled={!canSubmit}
               className="shrink-0 text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
