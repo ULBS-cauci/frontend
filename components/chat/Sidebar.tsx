@@ -47,10 +47,7 @@ export default function Sidebar({ role = "professor" }: Props) {
       <div
         className="relative z-[1] w-full h-full flex flex-col bg-[#0c0b10] rounded-r-3xl border-r border-t border-b border-[rgba(232,228,240,0.07)]"
       >
-        <div className={`flex pt-6 px-3 items-center ${isOpen ? "justify-between" : "justify-center"}`}>
-          {isOpen && (
-           <></>
-          )}
+        <div className={`flex pt-6 px-3 items-center ${isOpen ? "justify-end" : "justify-center"}`}>
           <button
             onClick={() => setIsOpen((v) => !v)}
             className="text-[rgba(232,228,240,0.45)] hover:text-[#e8e4f0] transition-colors p-1.5 rounded-lg hover:bg-[rgba(232,228,240,0.06)]"
@@ -113,7 +110,10 @@ export default function Sidebar({ role = "professor" }: Props) {
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto px-3 chat-scroll">
+            <div
+              style={{ scrollbarWidth: "none" }}
+              className="flex-1 overflow-y-auto px-3 [&::-webkit-scrollbar]:hidden"
+            >
               <div className="mt-2">
                 <p className="text-[rgba(232,228,240,0.35)] text-xs px-3 py-2 uppercase tracking-widest">
                   History
