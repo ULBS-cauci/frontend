@@ -76,7 +76,16 @@ export default function FilePreview({ url, fileName }: Props) {
     // Combining those two would give embedded PDF JavaScript same-origin access to the
     // app. <object> sidesteps the issue entirely: it has no sandbox attribute, and blob
     // URLs are already scoped to this origin so cross-origin leakage isn't possible.
-    return <object data={blobUrl} type="application/pdf" className="w-full h-full bg-white" aria-label={fileName} />;
+    return (
+      <object data={blobUrl} type="application/pdf" className="w-full h-full bg-white" aria-label={fileName}>
+        <div className="flex flex-col items-center justify-center h-full gap-3 text-white/60 text-sm">
+          <p>Your browser can&apos;t display this PDF inline.</p>
+          <a href={blobUrl} download={fileName} className="px-4 py-2 rounded-full bg-[#7c6af7] text-white text-sm hover:bg-[#8b7bf8] transition-colors">
+            Download PDF
+          </a>
+        </div>
+      </object>
+    );
   }
 
   if (kind === "image") {
