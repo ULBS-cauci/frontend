@@ -12,6 +12,10 @@ export function getAttachmentDownloadUrl(attachmentId: string): string {
   return `${ATTACHMENT_DOWNLOAD_ENDPOINT}/${encodeURIComponent(attachmentId)}`;
 }
 
+export function getMaterialPreviewUrl(courseId: string, materialId: string): string {
+  return `${COURSES_ENDPOINT}/${encodeURIComponent(courseId)}/materials/${encodeURIComponent(materialId)}/preview`;
+}
+
 export async function getConversations(): Promise<Conversation[]> {
   const response = await fetch(`${SESSIONS_ENDPOINT}/`);
   if (!response.ok) {
@@ -131,42 +135,65 @@ export async function getMaterials(courseId: string): Promise<Material[]> {
 }
 
 
-async function* readStream(response: Response): AsyncIterable<StreamEvent> {
+async function* readStream(
+  response: Response,
+  signal?: AbortSignal,
+): AsyncIterable<StreamEvent> {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  // Cancelling the reader on abort closes the underlying connection so the backend
+  // sees the disconnect and stops generating, instead of running to completion.
+  const onAbort = () => {
+    reader.cancel().catch(() => {});
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
 
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      if (signal?.aborted) break;
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    const events = buffer.split("\n\n");
-    buffer = events.pop() ?? "";
+      buffer += decoder.decode(value, { stream: true });
 
-    for (const event of events) {
-      if (!event.startsWith("data: ")) continue;
-      const data = event.slice(6);
-      if (data === "[DONE]") return;
-      const parsed = JSON.parse(data);
-      if (parsed.type === "status") {
-        yield { type: "status", message: parsed.message };
-      } else if (parsed.type === "chunk") {
-        yield { type: "chunk", content: parsed.content };
-      } else if (parsed.type === "sources") {
-        yield { type: "sources", sources: parsed.sources };
-      } else if (parsed.type === "context_switch_request") {
-        yield {
-          type: "context_switch_request",
-          detected_course_id: parsed.detected_course_id,
-          detected_course_name: parsed.detected_course_name,
-          user_message_id: parsed.user_message_id,
-        };
-      } else if (parsed.type === "error") {
-        throw new Error(parsed.message);
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+
+      for (const event of events) {
+        // Stop draining a buffered burst the instant the user aborts.
+        if (signal?.aborted) break;
+        if (!event.startsWith("data: ")) continue;
+        const data = event.slice(6);
+        if (data === "[DONE]") return;
+        const parsed = JSON.parse(data);
+        if (parsed.type === "status") {
+          yield { type: "status", message: parsed.message };
+        } else if (parsed.type === "chunk") {
+          yield { type: "chunk", content: parsed.content };
+        } else if (parsed.type === "sources") {
+          yield { type: "sources", sources: parsed.sources };
+        } else if (parsed.type === "context_switch_request") {
+          yield {
+            type: "context_switch_request",
+            detected_course_id: parsed.detected_course_id,
+            detected_course_name: parsed.detected_course_name,
+            user_message_id: parsed.user_message_id,
+          };
+        } else if (parsed.type === "error") {
+          throw new Error(parsed.message);
+        }
       }
     }
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    reader.cancel().catch(() => {});
+  }
+
+  // Surface the abort so the caller's catch can discard the turn and restore the prompt.
+  if (signal?.aborted) {
+    throw new DOMException("Stream aborted by the user.", "AbortError");
   }
 }
 
@@ -223,18 +250,22 @@ export async function* askStream(
     throw new Error(`Backend returned ${response.status}: ${await response.text()}`);
   }
 
-  yield* readStream(response);
+  yield* readStream(response, signal);
 }
 
-export async function* regenerateStream(conversation_id: string): AsyncIterable<StreamEvent> {
+export async function* regenerateStream(
+  conversation_id: string,
+  signal?: AbortSignal,
+): AsyncIterable<StreamEvent> {
   const response = await fetch(`${SESSIONS_ENDPOINT}/${conversation_id}/regenerate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal,
   });
 
   if (!response.ok || !response.body) {
     throw new Error(`Backend returned ${response.status}: ${await response.text()}`);
   }
 
-  yield* readStream(response);
+  yield* readStream(response, signal);
 }

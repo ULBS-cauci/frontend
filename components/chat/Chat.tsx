@@ -4,7 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl, getCourse } from "@/lib/api";
 import type { AttachmentPublic, Message, MessagePublic, MessageRole, PendingContextSwitch } from "@/lib/types";
 import MessageList from "./MessageList";
-import MessageInput from "./MessageInput";
+import MessageInput, { type MessageInputHandle } from "./MessageInput";
+import FilePreview from "../FilePreview";
 import CourseSelector from "./CourseSelector";
 import ContextSwitchBanner from "./ContextSwitchBanner";
 import { useChatContext } from "@/lib/chat-context";
@@ -22,56 +23,17 @@ export default function Chat({ conversationId }: ChatProps) {
     selectedCourseId, setSelectedCourse,
   } = useChatContext();
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingSwitch, setPendingSwitch] = useState<PendingContextSwitch | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastUserRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<MessageInputHandle>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const scrollIntent = useRef<"bottom" | "user-top" | null>(null);
-  const streamAbortControllerRef = useRef<AbortController | null>(null);
-
   const [previewing, setPreviewing] = useState<AttachmentPublic | null>(null);
-  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState(false);
-
-
-  // Fetch PDF as blob when an attachment is selected so we get a same-origin
-  // blob URL — cross-origin iframes block Chrome's built-in PDF viewer.
-  useEffect(() => {
-    if (!previewing) {
-      if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
-      setPreviewBlobUrl(null);
-      setPreviewError(false);
-      return;
-    }
-
-    let cancelled = false;
-    setPreviewLoading(true);
-    setPreviewError(false);
-
-    fetch(getAttachmentDownloadUrl(previewing.id))
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        setPreviewBlobUrl(URL.createObjectURL(blob));
-      })
-      .catch(() => {
-        if (!cancelled) setPreviewError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setPreviewLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewing]);
 
   // Initial load
   useEffect(() => {
@@ -152,9 +114,13 @@ export default function Chat({ conversationId }: ChatProps) {
     addUserBubble = true,
     existingMessageId = "",
   ) => {
+    // Ignore re-entrant calls while a request is already streaming — guards against
+    // a duplicate POST /ask if a submit fires again before the first one settles.
+    if (abortRef.current) return;
     setError(null);
     setPendingSwitch(null);
     setLoading(true);
+    setStreaming(true);
 
     if (addUserBubble) {
       scrollIntent.current = "user-top";
@@ -167,6 +133,9 @@ export default function Chat({ conversationId }: ChatProps) {
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     }
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     let targetConvId = activeConvId;
     let isNewConv = false;
 
@@ -178,7 +147,7 @@ export default function Chat({ conversationId }: ChatProps) {
         isNewConv = true;
       }
 
-      for await (const event of askStream(query, targetConvId, attachmentIds, forceCurrentCourse, outputFormatId || undefined, undefined, existingMessageId || undefined)) {
+      for await (const event of askStream(query, targetConvId, attachmentIds, forceCurrentCourse, outputFormatId || undefined, controller.signal, existingMessageId || undefined)) {
         if (event.type === "status") {
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
@@ -219,8 +188,18 @@ export default function Chat({ conversationId }: ChatProps) {
         router.replace(`/chat/${targetConvId}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      if (controller.signal.aborted) {
+        // Stopped by the user: discard the in-progress turn (the just-added user +
+        // assistant bubbles) and restore the prompt so it can be edited and resent.
+        // The backend persists nothing for a cancelled stream, so this stays consistent.
+        setMessages((prev) => prev.slice(0, -2));
+        inputRef.current?.restore(query, attachments);
+      } else {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      }
     } finally {
+      abortRef.current = null;
+      setStreaming(false);
       setLoading(false);
       setStatusMessage(null);
     }
@@ -296,8 +275,12 @@ export default function Chat({ conversationId }: ChatProps) {
 
   const handleRegenerate = async () => {
     if (!activeConvId) return;
+    if (abortRef.current) return;
     setError(null);
     setLoading(true);
+    setStreaming(true);
+    // Snapshot the current messages so a stop can restore the previous answer untouched.
+    const snapshot = messages;
     setMessages((prev) => {
       const next = [...prev];
       const last = next[next.length - 1];
@@ -305,8 +288,12 @@ export default function Chat({ conversationId }: ChatProps) {
       next[next.length - 1] = { role: "assistant", content: "" };
       return next;
     });
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      for await (const event of regenerateStream(activeConvId)) {
+      for await (const event of regenerateStream(activeConvId, controller.signal)) {
         if (event.type === "status") {
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
@@ -332,10 +319,23 @@ export default function Chat({ conversationId }: ChatProps) {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error during regeneration");
+      if (controller.signal.aborted) {
+        // Stopped by the user: the backend kept the original answer (it only commits a
+        // regeneration at the very end), so restore the pre-regeneration view.
+        setMessages(snapshot);
+      } else {
+        setError(err instanceof Error ? err.message : "Unknown error during regeneration");
+      }
     } finally {
+      abortRef.current = null;
+      setStreaming(false);
       setLoading(false);
+      setStatusMessage(null);
     }
+  };
+
+  const handleStop = () => {
+    abortRef.current?.abort();
   };
 
   const canRegenerate =
@@ -425,12 +425,18 @@ export default function Chat({ conversationId }: ChatProps) {
           </div>
 
           <div className="px-6 pb-7">
-            <MessageInput onSubmit={handleAsk} disabled={loading} />
+            <MessageInput
+              ref={inputRef}
+              onSubmit={handleAsk}
+              disabled={loading || streaming}
+              isGenerating={streaming}
+              onStop={handleStop}
+            />
           </div>
         </div>
       </div>
 
-      {/* PDF preview pane */}
+      {/* Attachment preview pane */}
       {previewing && (
         <div className="w-1/2 border-l border-[rgba(232,228,240,0.07)] flex flex-col">
           <div className="flex items-center justify-between px-4 py-3 bg-[#141219] border-b border-[rgba(232,228,240,0.07)] shrink-0">
@@ -447,23 +453,10 @@ export default function Chat({ conversationId }: ChatProps) {
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            {previewLoading && (
-              <div className="flex items-center justify-center h-full text-[rgba(232,228,240,0.45)] text-sm">
-                Loading…
-              </div>
-            )}
-            {previewError && (
-              <div className="flex items-center justify-center h-full text-[#f87171] text-sm">
-                Failed to load PDF.
-              </div>
-            )}
-            {!previewLoading && !previewError && previewBlobUrl && (
-              <iframe
-                src={previewBlobUrl}
-                className="w-full h-full bg-white"
-                title={previewing.file_name}
-              />
-            )}
+            <FilePreview
+              url={getAttachmentDownloadUrl(previewing.id)}
+              fileName={previewing.file_name}
+            />
           </div>
         </div>
       )}

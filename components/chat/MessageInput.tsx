@@ -1,5 +1,12 @@
 "use client";
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+  KeyboardEvent,
+} from "react";
 import { uploadAttachment, getSystemPrompts, getUserSettings, updateUserSettings } from "@/lib/api";
 import type { AttachmentPublic, SystemPromptSummary } from "@/lib/types";
 import { useChatContext } from "@/lib/chat-context";
@@ -15,6 +22,13 @@ interface PendingAttachment {
 interface Props {
   onSubmit: (query: string, attachmentIds: string[], attachments: AttachmentPublic[], outputFormatId: string) => void;
   disabled?: boolean;
+  isGenerating?: boolean;
+  onStop?: () => void;
+}
+
+export interface MessageInputHandle {
+  /** Repopulate the input with a previously-sent prompt (used when a stream is stopped). */
+  restore: (text: string, attachments: AttachmentPublic[]) => void;
 }
 
 function FileChip({
@@ -67,7 +81,10 @@ function Check() {
   );
 }
 
-export default function MessageInput({ onSubmit, disabled }: Props) {
+const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput(
+  { onSubmit, disabled, isGenerating, onStop }: Props,
+  ref,
+) {
   const { outputFormats } = useChatContext();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -89,6 +106,23 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    restore: (text: string, attachments: AttachmentPublic[]) => {
+      setValue(text);
+      // The attachments were already uploaded, so rebuild them as ready chips
+      // directly from the AttachmentPublic objects — no re-upload needed.
+      setPendingAttachments(
+        attachments.map((attachment) => ({
+          clientKey: crypto.randomUUID(),
+          fileName: attachment.file_name,
+          status: "ready",
+          attachment,
+        })),
+      );
+      textareaRef.current?.focus();
+    },
+  }));
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -452,18 +486,40 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] hover:bg-[rgba(232,228,240,0.06)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-            aria-label="Send"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          </button>
+          {isGenerating ? (
+            <button
+              key="stop"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onStop?.();
+              }}
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-[#7c6af7] text-white shadow-[0_0_12px_rgba(124,106,247,0.6)] hover:bg-[#8b7bf8] transition-colors animate-pulse"
+              aria-label="Stop generating"
+              title="Stop generating"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              key="send"
+              type="submit"
+              disabled={!canSubmit}
+              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full text-[rgba(232,228,240,0.35)] hover:text-[rgba(232,228,240,0.7)] hover:bg-[rgba(232,228,240,0.06)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+              aria-label="Send"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          )}
         </div>
       </form>
     </div>
   );
-}
+});
+
+export default MessageInput;
