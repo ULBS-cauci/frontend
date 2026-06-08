@@ -70,11 +70,11 @@ export default function FilePreview({ url, fileName }: Props) {
   const kind = getFileKind(fileName);
 
   if (kind === "pdf") {
-    // Render user-uploaded PDFs in a locked-down iframe. An empty sandbox gives the
-    // document a unique opaque origin and disables scripting, so a malicious PDF
-    // can't run JS against the app's origin (cookies / localStorage / API). The
-    // browser's native PDF viewer still renders the blob fine under this sandbox.
-    return <iframe src={blobUrl} sandbox="" className="w-full h-full bg-white" title={fileName} />;
+    // allow-scripts lets Edge/Chrome's native PDF viewer function (it needs scripting
+    // internally). Omitting allow-same-origin keeps the iframe in an opaque origin, so
+    // any scripts inside the PDF can't reach the app's cookies, localStorage, or API —
+    // the security goal is preserved even with scripting enabled.
+    return <iframe src={blobUrl} sandbox="allow-scripts" className="w-full h-full bg-white" title={fileName} />;
   }
 
   if (kind === "image") {
