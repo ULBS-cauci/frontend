@@ -51,6 +51,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   sources?: Source[];
+  sources?: Source[];
   attachments?: AttachmentPublic[];
 }
 
@@ -85,6 +86,7 @@ export interface MessagePublic {
   content: string;
   output_format_id: string | null;
   created_at: string;
+  sources?: Source[];
   sources?: Source[];
   attachments: AttachmentPublic[];
 }
