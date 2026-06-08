@@ -33,8 +33,6 @@ export default function Chat({ conversationId }: ChatProps) {
   const inputRef = useRef<MessageInputHandle>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollIntent = useRef<"bottom" | "user-top" | null>(null);
-  const streamAbortControllerRef = useRef<AbortController | null>(null);
-
   const [previewing, setPreviewing] = useState<AttachmentPublic | null>(null);
 
   // Initial load
