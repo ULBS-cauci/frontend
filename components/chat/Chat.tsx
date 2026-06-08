@@ -1,10 +1,12 @@
 "use client";
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl } from "@/lib/api";
-import type { AttachmentPublic, Message, MessagePublic, MessageRole } from "@/lib/types";
+import { useRouter, useSearchParams } from "next/navigation";
+import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl, getCourse } from "@/lib/api";
+import type { AttachmentPublic, Message, MessagePublic, MessageRole, PendingContextSwitch } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
+import CourseSelector from "./CourseSelector";
+import ContextSwitchBanner from "./ContextSwitchBanner";
 import { useChatContext } from "@/lib/chat-context";
 
 interface ChatProps {
@@ -13,10 +15,18 @@ interface ChatProps {
 
 export default function Chat({ conversationId }: ChatProps) {
   const router = useRouter();
-  const { refreshConversations, bumpConversation, messages, setMessages, activeConvId, setActiveConvId, migrateNewConvPref } = useChatContext();
+  const searchParams = useSearchParams();
+  const {
+    conversations, refreshConversations, bumpConversation,
+    messages, setMessages,
+    activeConvId, setActiveConvId,
+    selectedCourseId, setSelectedCourse,
+    migrateNewConvPref,
+  } = useChatContext();
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingSwitch, setPendingSwitch] = useState<PendingContextSwitch | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const lastUserRef = useRef<HTMLDivElement>(null);
@@ -26,11 +36,13 @@ export default function Chat({ conversationId }: ChatProps) {
   // ResizeObserver can re-pin to bottom when async content (e.g. a Mermaid SVG that
   // renders after streaming ends) grows the page, without yanking a user who scrolled up.
   const stickToBottom = useRef(true);
+  const streamAbortControllerRef = useRef<AbortController | null>(null);
 
   const [previewing, setPreviewing] = useState<AttachmentPublic | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(false);
+
 
   // Fetch PDF as blob when an attachment is selected so we get a same-origin
   // blob URL — cross-origin iframes block Chrome's built-in PDF viewer.
@@ -92,6 +104,7 @@ export default function Chat({ conversationId }: ChatProps) {
           id: m.id,
           role: senderToRole[m.sender],
           content: m.content,
+          sources: m.sources,
           attachments: m.attachments,
         }));
         setMessages(formatted);
@@ -110,34 +123,70 @@ export default function Chat({ conversationId }: ChatProps) {
     };
   }, [conversationId, setActiveConvId, setMessages]);
 
+  useEffect(() => {
+    const urlCourseId = searchParams.get("course_id");
+    const urlCourseName = searchParams.get("course_name");
+    if (urlCourseId && urlCourseName) {
+      setSelectedCourse(urlCourseId, urlCourseName);
+      return;
+    }
+
+    if (!conversationId) {
+      setSelectedCourse(null, null);
+      return;
+    }
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return; // list not yet loaded — will re-run when it arrives
+    if (!conv.course_id) {
+      setSelectedCourse(null, null);
+      return;
+    }
+    let cancelled = false;
+    getCourse(conv.course_id)
+      .then((course) => {
+        if (!cancelled) setSelectedCourse(course.id, course.title);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [conversationId, conversations, setSelectedCourse, searchParams]);
+
   const handleAsk = async (
     query: string,
     attachmentIds: string[] = [],
     attachments: AttachmentPublic[] = [],
     outputFormatId = "",
+    forceCurrentCourse = false,
+    addUserBubble = true,
+    existingMessageId = "",
   ) => {
     setError(null);
+    setPendingSwitch(null);
     setLoading(true);
-    scrollIntent.current = "bottom";
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: query, attachments },
-      { role: "assistant", content: "" },
-    ]);
+
+    if (addUserBubble) {
+      scrollIntent.current = "user-top";
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: query, attachments },
+        { role: "assistant", content: "" },
+      ]);
+    } else {
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    }
 
     let targetConvId = activeConvId;
     let isNewConv = false;
 
     try {
       if (!targetConvId) {
-        const newConv = await createConversation();
+        const newConv = await createConversation(selectedCourseId ?? undefined);
         targetConvId = newConv.id;
         setActiveConvId(targetConvId);
         migrateNewConvPref(targetConvId);
         isNewConv = true;
       }
 
-      for await (const event of askStream(query, targetConvId, attachmentIds, outputFormatId || undefined)) {
+      for await (const event of askStream(query, targetConvId, attachmentIds, forceCurrentCourse, outputFormatId || undefined, undefined, existingMessageId || undefined)) {
         if (event.type === "status") {
           scrollIntent.current = "bottom";
           setStatusMessage(event.message);
@@ -148,12 +197,30 @@ export default function Chat({ conversationId }: ChatProps) {
             const next = [...prev];
             const last = next[next.length - 1];
             if (!last) return next;
-            next[next.length - 1] = {
-              role: "assistant",
-              content: last.content + event.content,
-            };
+            next[next.length - 1] = { ...last, content: last.content + event.content };
             return next;
           });
+        } else if (event.type === "sources") {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            const unique = event.sources.filter(
+              (s, i, arr) => arr.findIndex(x => x.material_id === s.material_id) === i
+            );
+            next[next.length - 1] = { ...last, sources: unique };
+            return next;
+          });
+        } else if (event.type === "context_switch_request") {
+          setMessages((prev) => prev.slice(0, -1));
+          setPendingSwitch({
+            detectedCourseId: event.detected_course_id,
+            detectedCourseName: event.detected_course_name,
+            originalQuery: query,
+            originalAttachmentIds: attachmentIds,
+            originalUserMessageId: event.user_message_id,
+          });
+          return; // stop the stream loop — loading=false fires in the finally block
         }
       }
 
@@ -169,6 +236,74 @@ export default function Chat({ conversationId }: ChatProps) {
       setLoading(false);
       setStatusMessage(null);
     }
+  };
+
+  const handleSwitchCourse = () => {
+    if (!pendingSwitch) return;
+    const snap = pendingSwitch;
+
+    setPendingSwitch(null);
+    setError(null);
+    setStatusMessage(null);
+    setMessages([]);
+    setLoading(true);
+    setSelectedCourse(snap.detectedCourseId, snap.detectedCourseName);
+
+    (async () => {
+      try {
+        const newConv = await createConversation(snap.detectedCourseId);
+        setActiveConvId(newConv.id);
+
+        setMessages([
+          { role: "user", content: snap.originalQuery },
+          { role: "assistant", content: "" },
+        ]);
+
+        for await (const event of askStream(
+          snap.originalQuery,
+          newConv.id,
+          snap.originalAttachmentIds,
+        )) {
+          if (event.type === "status") {
+            setStatusMessage(event.message);
+          } else if (event.type === "chunk") {
+            setStatusMessage(null);
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (!last) return next;
+              next[next.length - 1] = { ...last, content: last.content + event.content };
+              return next;
+            });
+          } else if (event.type === "sources") {
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (!last) return next;
+              next[next.length - 1] = { ...last, sources: event.sources };
+              return next;
+            });
+          }
+        }
+
+        await refreshConversations();
+        router.replace(`/chat/${newConv.id}`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setLoading(false);
+        setStatusMessage(null);
+      }
+    })();
+  };
+
+  const handleStayCourse = () => {
+    if (!pendingSwitch) return;
+    const snap = pendingSwitch;
+    setPendingSwitch(null);
+    // Re-submit with force=true and the original message ID so the backend skips
+    // creating a duplicate user message, then short-circuits to a polite refusal.
+    handleAsk(snap.originalQuery, snap.originalAttachmentIds, [], "", true, false, snap.originalUserMessageId);
   };
 
   const handleRegenerate = async () => {
@@ -192,7 +327,18 @@ export default function Chat({ conversationId }: ChatProps) {
             const next = [...prev];
             const last = next[next.length - 1];
             if (!last) return next;
-            next[next.length - 1] = { role: "assistant", content: last.content + event.content };
+            next[next.length - 1] = { ...last, content: last.content + event.content };
+            return next;
+          });
+        } else if (event.type === "sources") {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            const unique = event.sources.filter(
+              (s, i, arr) => arr.findIndex(x => x.material_id === s.material_id) === i
+            );
+            next[next.length - 1] = { ...last, sources: unique };
             return next;
           });
         }
@@ -255,15 +401,20 @@ export default function Chat({ conversationId }: ChatProps) {
     });
     ro.observe(content);
     return () => ro.disconnect();
-  }, [messages.length === 0]);
+  }, [messages.length]);
 
   return (
     <div className="h-full bg-[#0c0b10] text-[#e8e4f0] flex">
       {/* Chat pane — full width with no preview, half width when PDF is open */}
       <div className={`${previewing ? "w-1/2" : "w-full"} flex items-center justify-center px-6 py-10`}>
         <div className="w-full max-w-4xl h-full flex flex-col overflow-hidden">
-          <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-10 pt-10 pb-6 chat-scroll">
-            {messages.length === 0 ? (
+          {/* Header bar with course selector */}
+          <div className="flex items-center justify-end px-10 pt-6 pb-2 shrink-0">
+            <CourseSelector />
+          </div>
+
+          <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-10 pt-4 pb-6 chat-scroll">
+            {messages.length === 0 && !pendingSwitch ? (
               <div className="h-full flex items-start justify-start">
                 <p className="text-[rgba(232,228,240,0.45)] text-base tracking-[-0.01em]">
                   {loading ? "Loading..." : "Our agent is ready to help."}
@@ -279,6 +430,13 @@ export default function Chat({ conversationId }: ChatProps) {
                   conversationId={activeConvId}
                   lastUserRef={lastUserRef}
                 />
+                {pendingSwitch && (
+                  <ContextSwitchBanner
+                    pending={pendingSwitch}
+                    onSwitch={handleSwitchCourse}
+                    onStay={handleStayCourse}
+                  />
+                )}
                 {loading && (messages[messages.length - 1]?.content === "" || statusMessage) && (
                   <div className="mt-4 pl-3 border-l-2 border-[rgba(167,139,250,0.5)] flex items-center gap-2.5">
                     <span className="w-2 h-2 rounded-full bg-[rgba(167,139,250,0.7)] animate-pulse shrink-0" />
