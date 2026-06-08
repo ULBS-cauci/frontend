@@ -1,4 +1,5 @@
 "use client";
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import { MESSAGE_RENDERERS } from "./messageTypes/registry";
@@ -11,7 +12,7 @@ interface Props {
   conversationId?: string;
 }
 
-export default function MarkdownMessage({
+function MarkdownMessage({
   content,
   streaming = false,
   conversationId,
@@ -103,3 +104,7 @@ export default function MarkdownMessage({
 
   return <ReactMarkdown components={components}>{content}</ReactMarkdown>;
 }
+
+// Memoize so messages that aren't streaming don't re-render (and re-render their
+// Mermaid diagrams) every time the last message receives a new chunk.
+export default memo(MarkdownMessage);

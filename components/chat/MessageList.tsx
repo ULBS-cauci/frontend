@@ -65,7 +65,7 @@ export default function MessageList({ messages, onRegenerate, onAttachmentClick,
               {isUser ? "You" : "ULBS Coach"}
             </p>
             <div
-              className={`rounded-[28px] px-5 py-4 text-[#e8e4f0] text-base leading-[1.7] ${isUser ? "max-w-[75%]" : isThinking ? "" : "max-w-[90%] w-full"}`}
+              className={`rounded-[28px] px-5 py-4 text-[#e8e4f0] text-base leading-[1.7] ${isUser ? "max-w-[75%]" : isThinking ? "" : "max-w-[90%]"}`}
               style={{
                 background: "rgba(20,14,35,0.35)",
                 backdropFilter: "blur(20px)",

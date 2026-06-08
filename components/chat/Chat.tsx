@@ -18,9 +18,14 @@ export default function Chat({ conversationId }: ChatProps) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const lastUserRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollIntent = useRef<"bottom" | "user-top" | null>(null);
+  // Tracks whether the user is parked at the bottom. Driven by scroll events so a
+  // ResizeObserver can re-pin to bottom when async content (e.g. a Mermaid SVG that
+  // renders after streaming ends) grows the page, without yanking a user who scrolled up.
+  const stickToBottom = useRef(true);
 
   const [previewing, setPreviewing] = useState<AttachmentPublic | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
@@ -134,6 +139,7 @@ export default function Chat({ conversationId }: ChatProps) {
 
       for await (const event of askStream(query, targetConvId, attachmentIds, outputFormatId || undefined)) {
         if (event.type === "status") {
+          scrollIntent.current = "bottom";
           setStatusMessage(event.message);
         } else if (event.type === "chunk") {
           setStatusMessage(null);
@@ -226,14 +232,37 @@ export default function Chat({ conversationId }: ChatProps) {
       }
     }
     scrollIntent.current = null;
-  }, [messages]);
+  }, [messages, statusMessage]);
+
+  const handleScroll = () => {
+    const c = scrollContainerRef.current;
+    if (!c) return;
+    stickToBottom.current = c.scrollHeight - c.scrollTop - c.clientHeight < 120;
+  };
+
+  // Re-pin to bottom when the content box grows — covers async growth that no
+  // state change accompanies, e.g. a Mermaid diagram swapping its skeleton for the
+  // rendered (taller) SVG after streaming has already finished.
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const container = scrollContainerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) return;
+    const ro = new ResizeObserver(() => {
+      if (stickToBottom.current) {
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+      }
+    });
+    ro.observe(content);
+    return () => ro.disconnect();
+  }, [messages.length === 0]);
 
   return (
     <div className="h-full bg-[#0c0b10] text-[#e8e4f0] flex">
       {/* Chat pane — full width with no preview, half width when PDF is open */}
       <div className={`${previewing ? "w-1/2" : "w-full"} flex items-center justify-center px-6 py-10`}>
         <div className="w-full max-w-4xl h-full flex flex-col overflow-hidden">
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-10 pt-10 pb-6 chat-scroll">
+          <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-10 pt-10 pb-6 chat-scroll">
             {messages.length === 0 ? (
               <div className="h-full flex items-start justify-start">
                 <p className="text-[rgba(232,228,240,0.45)] text-base tracking-[-0.01em]">
@@ -241,7 +270,7 @@ export default function Chat({ conversationId }: ChatProps) {
                 </p>
               </div>
             ) : (
-              <>
+              <div ref={contentRef}>
                 <MessageList
                   messages={messages}
                   onRegenerate={canRegenerate ? handleRegenerate : undefined}
@@ -264,7 +293,7 @@ export default function Chat({ conversationId }: ChatProps) {
                   </p>
                 )}
                 <div ref={bottomRef} />
-              </>
+              </div>
             )}
           </div>
 

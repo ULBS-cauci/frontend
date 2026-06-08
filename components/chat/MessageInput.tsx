@@ -501,7 +501,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
         {activePrompt && (
           <button
             type="button"
-            onClick={() => setConvPref(prefKey, { promptId: undefined })}
+            onClick={() => handleSelectPrompt(null)}
             className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all"
             style={{
               background: "rgba(232,228,240,0.06)",
