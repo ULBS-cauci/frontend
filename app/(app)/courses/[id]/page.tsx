@@ -74,6 +74,17 @@ export default function CoursePage() {
         </button>
         <span className="text-white/15">/</span>
         <h1 className="text-sm font-medium text-white/80">{course.title}</h1>
+        <div className="ml-auto">
+          <button
+            onClick={() => router.push(`/chat?course_id=${encodeURIComponent(id)}&course_name=${encodeURIComponent(course.title)}`)}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#7c6af7]/15 hover:bg-[#7c6af7]/25 border border-[#7c6af7]/30 text-[#c4b5fd] text-sm font-medium transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Chat about this course
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden gap-5 p-5">
