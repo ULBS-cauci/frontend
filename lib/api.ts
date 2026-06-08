@@ -20,8 +20,12 @@ export async function getConversations(): Promise<Conversation[]> {
   return response.json();
 }
 
-export async function createConversation(): Promise<Conversation> {
-  const response = await fetch(`${SESSIONS_ENDPOINT}/`, { method: "POST" });
+export async function createConversation(courseId?: string): Promise<Conversation> {
+  const response = await fetch(`${SESSIONS_ENDPOINT}/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ course_id: courseId ?? null }),
+  });
   if (!response.ok) {
     throw new Error(`Failed to create conversation: ${response.status}`);
   }
@@ -152,6 +156,13 @@ async function* readStream(response: Response): AsyncIterable<StreamEvent> {
         yield { type: "chunk", content: parsed.content };
       } else if (parsed.type === "sources") {
         yield { type: "sources", sources: parsed.sources };
+      } else if (parsed.type === "context_switch_request") {
+        yield {
+          type: "context_switch_request",
+          detected_course_id: parsed.detected_course_id,
+          detected_course_name: parsed.detected_course_name,
+          user_message_id: parsed.user_message_id,
+        };
       } else if (parsed.type === "error") {
         throw new Error(parsed.message);
       }
@@ -187,19 +198,25 @@ export async function* askStream(
   content: string,
   conversation_id: string,
   attachmentIds: string[] = [],
+  forceCurrentCourse = false,
   outputFormatId?: string,
+  signal?: AbortSignal,
+  existingMessageId?: string,
 ): AsyncIterable<StreamEvent> {
   const request: AskRequest = {
     content,
     conversation_id,
     ...(attachmentIds.length > 0 ? { attachment_ids: attachmentIds } : {}),
+    ...(forceCurrentCourse ? { force_current_course: true } : {}),
     ...(outputFormatId ? { output_format_id: outputFormatId } : {}),
+    ...(existingMessageId ? { existing_message_id: existingMessageId } : {}),
   };
 
   const response = await fetch(ASK_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
+    signal,
   });
 
   if (!response.ok || !response.body) {
