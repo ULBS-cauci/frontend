@@ -41,7 +41,10 @@ export default function CourseSelector() {
       </button>
 
       {open && (
-        <div className="absolute top-full mt-1.5 right-0 z-50 min-w-[14rem] max-w-xs max-h-64 overflow-y-auto rounded-xl bg-[#1a1825] border border-white/[0.08] shadow-xl">
+        <div
+          style={{ scrollbarWidth: "none" }}
+          className="absolute top-full mt-1.5 right-0 z-50 min-w-[14rem] max-w-xs max-h-64 overflow-y-auto rounded-xl bg-[#1a1825] border border-white/[0.08] shadow-xl [&::-webkit-scrollbar]:hidden"
+        >
           <button
             type="button"
             onClick={() => { setSelectedCourse(null, null); setOpen(false); }}
