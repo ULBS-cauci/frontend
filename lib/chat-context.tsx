@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { Conversation, Message, OutputFormatPublic } from "./types";
 import { getConversations, getOutputFormats } from "./api";
 
+type ConvPref = { outputFormatId: string; promptId?: string };
+
 interface ChatContextType {
   conversations: Conversation[];
   refreshConversations: () => Promise<void>;
@@ -13,6 +15,9 @@ interface ChatContextType {
   activeConvId: string | undefined;
   setActiveConvId: React.Dispatch<React.SetStateAction<string | undefined>>;
   outputFormats: OutputFormatPublic[];
+  convPrefs: Record<string, ConvPref>;
+  setConvPref: (convId: string, pref: Partial<ConvPref>) => void;
+  migrateNewConvPref: (newConvId: string) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -22,6 +27,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | undefined>(undefined);
   const [outputFormats, setOutputFormats] = useState<OutputFormatPublic[]>([]);
+  const [convPrefs, setConvPrefs] = useState<Record<string, ConvPref>>({});
 
   const refreshConversations = useCallback(async () => {
     try {
@@ -43,13 +49,28 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setConvPref = useCallback((convId: string, pref: Partial<ConvPref>) => {
+    setConvPrefs((prev) => {
+      const current: ConvPref = prev[convId] ?? { outputFormatId: "" };
+      return { ...prev, [convId]: { ...current, ...pref } };
+    });
+  }, []);
+
+  const migrateNewConvPref = useCallback((newConvId: string) => {
+    setConvPrefs((prev) => {
+      const { __new__: newPref, ...rest } = prev;
+      if (!newPref) return prev;
+      return { ...rest, [newConvId]: newPref };
+    });
+  }, []);
+
   useEffect(() => {
     refreshConversations();
     getOutputFormats().then(setOutputFormats).catch((err) => console.error("Failed to fetch output formats:", err));
   }, [refreshConversations]);
 
   return (
-    <ChatContext.Provider value={{ conversations, refreshConversations, bumpConversation, messages, setMessages, activeConvId, setActiveConvId, outputFormats }}>
+    <ChatContext.Provider value={{ conversations, refreshConversations, bumpConversation, messages, setMessages, activeConvId, setActiveConvId, outputFormats, convPrefs, setConvPref, migrateNewConvPref }}>
       {children}
     </ChatContext.Provider>
   );

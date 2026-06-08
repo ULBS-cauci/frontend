@@ -13,7 +13,7 @@ interface ChatProps {
 
 export default function Chat({ conversationId }: ChatProps) {
   const router = useRouter();
-  const { refreshConversations, bumpConversation, messages, setMessages, activeConvId, setActiveConvId } = useChatContext();
+  const { refreshConversations, bumpConversation, messages, setMessages, activeConvId, setActiveConvId, migrateNewConvPref } = useChatContext();
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +113,7 @@ export default function Chat({ conversationId }: ChatProps) {
   ) => {
     setError(null);
     setLoading(true);
-    scrollIntent.current = "user-top";
+    scrollIntent.current = "bottom";
     setMessages((prev) => [
       ...prev,
       { role: "user", content: query, attachments },
@@ -128,6 +128,7 @@ export default function Chat({ conversationId }: ChatProps) {
         const newConv = await createConversation();
         targetConvId = newConv.id;
         setActiveConvId(targetConvId);
+        migrateNewConvPref(targetConvId);
         isNewConv = true;
       }
 

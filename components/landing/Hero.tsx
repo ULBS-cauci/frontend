@@ -107,10 +107,10 @@ export default function Hero() {
       </div>
 
       {/* Chat preview — floating */}
-      <div className="relative z-10 flex justify-center px-6 pb-24">
+      <div className="relative z-10 flex justify-center px-6 pb-12">
         <Link
           href="/chat"
-          className="float block w-full max-w-lg rounded-2xl p-5 cursor-pointer transition-all hover:brightness-110"
+          className="float block w-full max-w-2xl rounded-2xl p-5 cursor-pointer transition-[filter] hover:brightness-110"
           style={{
             background: "rgba(18,14,30,0.65)",
             backdropFilter: "blur(24px)",

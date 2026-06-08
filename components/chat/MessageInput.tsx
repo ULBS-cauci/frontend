@@ -68,10 +68,13 @@ function Check() {
 }
 
 export default function MessageInput({ onSubmit, disabled }: Props) {
-  const { outputFormats } = useChatContext();
+  const { outputFormats, activeConvId, convPrefs, setConvPref } = useChatContext();
+  const prefKey = activeConvId ?? "__new__";
+  const outputFormatId = convPrefs[prefKey]?.outputFormatId ?? "";
+  const convPromptId = convPrefs[prefKey]?.promptId;
+
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
-  const [outputFormatId, setOutputFormatId] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [submenuOpen, setSubmenuOpen] = useState(false);
@@ -149,12 +152,13 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
   const handleSelectPrompt = async (id: string | null) => {
     const previous = selectedPromptId;
     setSelectedPromptId(id);
+    setConvPref(prefKey, { promptId: id ?? undefined });
     closeMenu();
     try {
       await updateUserSettings({ selected_system_prompt_id: id });
     } catch {
-      /* revert so the UI matches what's actually persisted server-side */
       setSelectedPromptId(previous);
+      setConvPref(prefKey, { promptId: previous ?? undefined });
     }
   };
 
@@ -236,7 +240,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
   };
 
   const activeFormat = outputFormats.find((f) => f.id === outputFormatId);
-  const activePrompt = prompts.find((p) => p.id === selectedPromptId);
+  const activePrompt = convPromptId ? prompts.find((p) => p.id === convPromptId) : undefined;
 
   return (
     <div className="w-full flex flex-col gap-2">
@@ -406,7 +410,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                       >
                         <button
                           type="button"
-                          onClick={() => { setOutputFormatId(""); closeMenu(); }}
+                          onClick={() => { setConvPref(prefKey, { outputFormatId: "" }); closeMenu(); }}
                           className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.55)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
                         >
                           Default
@@ -421,7 +425,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                           <button
                             key={f.id}
                             type="button"
-                            onClick={() => { setOutputFormatId(f.id); closeMenu(); }}
+                            onClick={() => { setConvPref(prefKey, { outputFormatId: f.id }); closeMenu(); }}
                             className={`flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] transition-colors ${outputFormatId === f.id ? "bg-[rgba(124,106,247,0.12)] text-[#c4b5fd]" : "text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)]"}`}
                           >
                             <span className="truncate capitalize">{f.name.replace(/_/g, " ")}</span>
@@ -482,7 +486,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
         {activeFormat && (
           <button
             type="button"
-            onClick={() => setOutputFormatId("")}
+            onClick={() => setConvPref(prefKey, { outputFormatId: "" })}
             className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all"
             style={{
               background: "rgba(124,106,247,0.15)",
@@ -497,7 +501,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
         {activePrompt && (
           <button
             type="button"
-            onClick={() => handleSelectPrompt(null)}
+            onClick={() => setConvPref(prefKey, { promptId: undefined })}
             className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all"
             style={{
               background: "rgba(232,228,240,0.06)",

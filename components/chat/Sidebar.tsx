@@ -113,7 +113,7 @@ export default function Sidebar({ role = "professor" }: Props) {
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto px-3">
+            <div className="flex-1 overflow-y-auto px-3 chat-scroll">
               <div className="mt-2">
                 <p className="text-[rgba(232,228,240,0.35)] text-xs px-3 py-2 uppercase tracking-widest">
                   History

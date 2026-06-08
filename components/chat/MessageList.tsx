@@ -64,7 +64,15 @@ export default function MessageList({ messages, onRegenerate, onAttachmentClick,
             <p className="text-[13px] text-[rgba(232,228,240,0.45)] mb-1.5 tracking-[0.03em]">
               {isUser ? "You" : "ULBS Coach"}
             </p>
-            <div className={`bg-[#0c0b10] border border-[rgba(232,228,240,0.07)] rounded-[28px] px-5 py-4 text-[#e8e4f0] text-base leading-[1.7] ${isUser ? "max-w-[75%]" : isThinking ? "" : "max-w-[90%] w-full"}`}>
+            <div
+              className={`rounded-[28px] px-5 py-4 text-[#e8e4f0] text-base leading-[1.7] ${isUser ? "max-w-[75%]" : isThinking ? "" : "max-w-[90%] w-full"}`}
+              style={{
+                background: "rgba(20,14,35,0.35)",
+                backdropFilter: "blur(20px)",
+                border: "1px solid rgba(124,106,247,0.15)",
+                boxShadow: "inset 0 1px 0 rgba(167,139,250,0.08)",
+              }}
+            >
               {isThinking ? (
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[rgba(167,139,250,0.7)] animate-bounce" style={{ animationDelay: "0ms" }} />
