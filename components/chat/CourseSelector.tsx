@@ -41,7 +41,7 @@ export default function CourseSelector() {
       </button>
 
       {open && (
-        <div className="absolute top-full mt-1.5 left-0 z-50 w-56 rounded-xl bg-[#1a1825] border border-white/[0.08] shadow-xl overflow-hidden">
+        <div className="absolute top-full mt-1.5 right-0 z-50 min-w-[14rem] max-w-xs max-h-64 overflow-y-auto rounded-xl bg-[#1a1825] border border-white/[0.08] shadow-xl">
           <button
             type="button"
             onClick={() => { setSelectedCourse(null, null); setOpen(false); }}
@@ -58,7 +58,7 @@ export default function CourseSelector() {
               key={c.id}
               type="button"
               onClick={() => { setSelectedCourse(c.id, c.title); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-sm truncate transition-colors ${
+              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
                 selectedCourseId === c.id
                   ? "text-white bg-[#7c6af7]/15"
                   : "text-white/60 hover:bg-white/[0.05] hover:text-white/90"

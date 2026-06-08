@@ -120,7 +120,7 @@ export default function Chat({ conversationId }: ChatProps) {
     const urlCourseId = searchParams.get("course_id");
     const urlCourseName = searchParams.get("course_name");
     if (urlCourseId && urlCourseName) {
-      setSelectedCourse(urlCourseId, decodeURIComponent(urlCourseName));
+      setSelectedCourse(urlCourseId, urlCourseName);
       return;
     }
 

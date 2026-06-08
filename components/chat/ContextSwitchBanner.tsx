@@ -20,7 +20,7 @@ export default function ContextSwitchBanner({ pending, onSwitch, onStay }: Props
         </div>
         <p className="text-sm text-white/80 leading-relaxed">
           It looks like your question is related to <span className="text-[#a78bfa] font-medium">{pending.detectedCourseName}</span>.
-          Would you like to switch to this course?
+          Switch to this course or choose another course from the list!
         </p>
       </div>
       <div className="flex gap-2 pl-10">
@@ -29,7 +29,7 @@ export default function ContextSwitchBanner({ pending, onSwitch, onStay }: Props
           onClick={onSwitch}
           className="px-3.5 py-1.5 rounded-lg bg-[#7c6af7]/20 hover:bg-[#7c6af7]/35 text-[#c4b5fd] text-sm font-medium transition-colors border border-[#7c6af7]/30"
         >
-          Yes, switch to {pending.detectedCourseName}
+          Switch to {pending.detectedCourseName}
         </button>
         <button
           type="button"
