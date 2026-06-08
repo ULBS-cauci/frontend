@@ -58,6 +58,15 @@ body {
   animation: sidebar-glow-pulse 3s ease-in-out infinite;
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+}
+
+.float {
+  animation: float 4s ease-in-out infinite;
+}
+
 .chat-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(167, 139, 250, 0.3) transparent;

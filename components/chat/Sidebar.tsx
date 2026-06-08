@@ -130,9 +130,10 @@ export default function Sidebar({ role = "professor" }: Props) {
                         <Link
                           key={chat.id}
                           href={`/chat/${chat.id}`}
-                          className={`relative flex items-center px-3 py-2 rounded-xl text-sm transition-colors truncate ${
+                          style={isActive ? { background: "linear-gradient(to right, rgba(232,228,240,0.05) 0%, rgba(124,106,247,0.25) 100%)" } : undefined}
+                          className={`relative flex items-center px-3 py-2 rounded-xl text-sm transition-colors ${
                             isActive
-                              ? "bg-[rgba(232,228,240,0.06)] text-[#e8e4f0]"
+                              ? "text-[#e8e4f0]"
                               : "text-[rgba(232,228,240,0.75)] hover:bg-[rgba(232,228,240,0.06)]"
                           }`}
                         >
@@ -153,12 +154,6 @@ export default function Sidebar({ role = "professor" }: Props) {
                 </svg>
                 Settings
               </Link>
-              <div className="flex items-center gap-2 px-3 py-2">
-                <div className="w-7 h-7 rounded-full bg-[#7c6af7] flex items-center justify-center text-xs text-white font-medium shrink-0">
-                  D
-                </div>
-                <span className="text-sm text-[rgba(232,228,240,0.75)] truncate">Denisa Ionescu</span>
-              </div>
             </div>
         </div>
       </div>

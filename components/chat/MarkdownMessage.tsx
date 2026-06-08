@@ -2,6 +2,8 @@
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import { MESSAGE_RENDERERS } from "./messageTypes/registry";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface Props {
   content: string;
@@ -32,11 +34,20 @@ export default function MarkdownMessage({
       }
       if (lang) {
         return (
-          <pre className="my-2 rounded-lg bg-[rgba(124,106,247,0.08)] border border-[rgba(232,228,240,0.08)] p-3 overflow-x-auto text-sm">
-            <code className="font-mono text-[rgba(232,228,240,0.85)] whitespace-pre-wrap break-words">
-              {children}
-            </code>
-          </pre>
+          <SyntaxHighlighter
+            language={lang}
+            style={vscDarkPlus}
+            customStyle={{
+              margin: "8px 0",
+              borderRadius: "10px",
+              fontSize: "13px",
+              background: "#1e1e1e",
+              border: "1px solid rgba(232,228,240,0.08)",
+            }}
+            wrapLongLines
+          >
+            {String(children ?? "").replace(/\n$/, "")}
+          </SyntaxHighlighter>
         );
       }
       return (

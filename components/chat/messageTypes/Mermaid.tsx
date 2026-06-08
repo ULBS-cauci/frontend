@@ -81,7 +81,7 @@ export default function Mermaid({ content, streaming }: MessageRendererProps) {
 
   return (
     <div
-      className="my-3 rounded-xl bg-[#141219] border border-[rgba(124,106,247,0.15)] p-4 overflow-x-auto [&_svg]:max-w-full"
+      className="my-3 rounded-xl bg-[#141219] border border-[rgba(124,106,247,0.15)] p-4 overflow-x-auto [&_svg]:max-w-full [&_svg]:mx-auto [&_svg]:block"
       dangerouslySetInnerHTML={{ __html: svg! }}
     />
   );

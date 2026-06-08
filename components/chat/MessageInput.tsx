@@ -235,7 +235,11 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
     setPendingAttachments((prev) => prev.filter((p) => p.clientKey !== clientKey));
   };
 
+  const activeFormat = outputFormats.find((f) => f.id === outputFormatId);
+  const activePrompt = prompts.find((p) => p.id === selectedPromptId);
+
   return (
+    <div className="w-full flex flex-col gap-2">
     <div className="relative w-full rounded-[28px] p-[1.5px]">
       {/* Animated glow — fades in while AI is thinking */}
       <div
@@ -428,6 +432,7 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
                     </div>
                   )}
                 </div>
+
               </div>
             )}
           </div>
@@ -470,6 +475,42 @@ export default function MessageInput({ onSubmit, disabled }: Props) {
           </button>
         </div>
       </form>
+    </div>
+
+    {(activeFormat || activePrompt) && (
+      <div className="flex items-center gap-2 px-3 flex-wrap">
+        {activeFormat && (
+          <button
+            type="button"
+            onClick={() => setOutputFormatId("")}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all"
+            style={{
+              background: "rgba(124,106,247,0.15)",
+              border: "1px solid rgba(124,106,247,0.35)",
+              color: "#c4b5fd",
+            }}
+          >
+            <span className="capitalize">{activeFormat.name.replace(/_/g, " ")}</span>
+            <span className="opacity-60">×</span>
+          </button>
+        )}
+        {activePrompt && (
+          <button
+            type="button"
+            onClick={() => handleSelectPrompt(null)}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all"
+            style={{
+              background: "rgba(232,228,240,0.06)",
+              border: "1px solid rgba(232,228,240,0.12)",
+              color: "rgba(232,228,240,0.6)",
+            }}
+          >
+            <span className="truncate max-w-[140px]">{activePrompt.title ?? "Custom prompt"}</span>
+            <span className="opacity-60">×</span>
+          </button>
+        )}
+      </div>
+    )}
     </div>
   );
 }
