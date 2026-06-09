@@ -22,16 +22,6 @@ export default function CoursesPage() {
 
   return (
     <div className="min-h-screen bg-[#0c0b10] text-[#e8e4f0] px-12 py-12 relative overflow-hidden">
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)
-          `,
-          backgroundSize: "80px 80px",
-        }}
-      />
 
       {showModal && (
         <AddCourseModal
