@@ -174,6 +174,8 @@ async function* readStream(
           yield { type: "chunk", content: parsed.content };
         } else if (parsed.type === "sources") {
           yield { type: "sources", sources: parsed.sources };
+        } else if (parsed.type === "done") {
+          yield { type: "done", message_id: parsed.message_id };
         } else if (parsed.type === "context_switch_request") {
           yield {
             type: "context_switch_request",

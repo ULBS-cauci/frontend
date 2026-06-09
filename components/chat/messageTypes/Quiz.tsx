@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { gradeAnswer, saveQuizAnswer } from "@/lib/api";
 import type { MessageRendererProps } from "./rendererTypes";
 import MessageTypePlaceholder from "./MessageTypePlaceholder";
@@ -50,6 +50,15 @@ export default function Quiz({ content, streaming, messageId, quizAnswers }: Mes
   const [result, setResult] = useState<GradeResult | null>(
     existingAnswer ? { correct: existingAnswer.correct, feedback: existingAnswer.feedback } : null,
   );
+
+  // quizAnswers usually arrives after the first render (async getMessages), so the
+  // useState initializers above miss it. Re-hydrate once the saved answer appears.
+  useEffect(() => {
+    if (!existingAnswer) return;
+    setSelected(existingAnswer.student_answer);
+    setInputValue(existingAnswer.student_answer);
+    setResult({ correct: existingAnswer.correct, feedback: existingAnswer.feedback });
+  }, [existingAnswer]);
 
   if (streaming || !question) {
     return <MessageTypePlaceholder content={content} streaming={streaming} />;
