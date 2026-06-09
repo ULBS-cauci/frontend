@@ -85,10 +85,13 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
   { onSubmit, disabled, isGenerating, onStop }: Props,
   ref,
 ) {
-  const { outputFormats } = useChatContext();
+  const { outputFormats, activeConvId, convPrefs, setConvPref } = useChatContext();
+  const prefKey = activeConvId ?? "__new__";
+  const outputFormatId = convPrefs[prefKey]?.outputFormatId ?? "";
+  const convPromptId = convPrefs[prefKey]?.promptId;
+
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
-  const [outputFormatId, setOutputFormatId] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [submenuOpen, setSubmenuOpen] = useState(false);
@@ -183,12 +186,13 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
   const handleSelectPrompt = async (id: string | null) => {
     const previous = selectedPromptId;
     setSelectedPromptId(id);
+    setConvPref(prefKey, { promptId: id ?? undefined });
     closeMenu();
     try {
       await updateUserSettings({ selected_system_prompt_id: id });
     } catch {
-      /* revert so the UI matches what's actually persisted server-side */
       setSelectedPromptId(previous);
+      setConvPref(prefKey, { promptId: previous ?? undefined });
     }
   };
 
@@ -269,11 +273,21 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
     setPendingAttachments((prev) => prev.filter((p) => p.clientKey !== clientKey));
   };
 
+  const activeFormat = outputFormats.find((f) => f.id === outputFormatId);
+  const activePrompt = convPromptId ? prompts.find((p) => p.id === convPromptId) : undefined;
+
   return (
+    <div className="w-full flex flex-col gap-2">
     <div className="relative w-full rounded-[28px] p-[1.5px]">
+      {/* Animated glow — fades in while AI is thinking */}
       <div
-        className="glow-border absolute inset-0 rounded-[inherit] z-0"
-        style={{ animationDuration: focused ? "2s" : "4s" }}
+        className="glow-border absolute inset-0 rounded-[inherit] z-0 transition-opacity duration-700"
+        style={{ opacity: disabled ? 1 : 0 }}
+      />
+      {/* Static border — fades in once response arrives */}
+      <div
+        className="absolute inset-0 rounded-[inherit] z-0 bg-[rgba(167,139,250,0.2)] transition-opacity duration-700"
+        style={{ opacity: disabled ? 0 : 1 }}
       />
 
       <form
@@ -430,7 +444,7 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
                       >
                         <button
                           type="button"
-                          onClick={() => { setOutputFormatId(""); closeMenu(); }}
+                          onClick={() => { setConvPref(prefKey, { outputFormatId: "" }); closeMenu(); }}
                           className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.55)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
                         >
                           Default
@@ -445,7 +459,7 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
                           <button
                             key={f.id}
                             type="button"
-                            onClick={() => { setOutputFormatId(f.id); closeMenu(); }}
+                            onClick={() => { setConvPref(prefKey, { outputFormatId: f.id }); closeMenu(); }}
                             className={`flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-[14px] transition-colors ${outputFormatId === f.id ? "bg-[rgba(124,106,247,0.12)] text-[#c4b5fd]" : "text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)]"}`}
                           >
                             <span className="truncate capitalize">{f.name.replace(/_/g, " ")}</span>
@@ -456,6 +470,7 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
                     </div>
                   )}
                 </div>
+
               </div>
             )}
           </div>
@@ -518,6 +533,42 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
           )}
         </div>
       </form>
+    </div>
+
+    {(activeFormat || activePrompt) && (
+      <div className="flex items-center gap-2 px-3 flex-wrap">
+        {activeFormat && (
+          <button
+            type="button"
+            onClick={() => setConvPref(prefKey, { outputFormatId: "" })}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all"
+            style={{
+              background: "rgba(124,106,247,0.15)",
+              border: "1px solid rgba(124,106,247,0.35)",
+              color: "#c4b5fd",
+            }}
+          >
+            <span className="capitalize">{activeFormat.name.replace(/_/g, " ")}</span>
+            <span className="opacity-60">×</span>
+          </button>
+        )}
+        {activePrompt && (
+          <button
+            type="button"
+            onClick={() => handleSelectPrompt(null)}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all"
+            style={{
+              background: "rgba(232,228,240,0.06)",
+              border: "1px solid rgba(232,228,240,0.12)",
+              color: "rgba(232,228,240,0.6)",
+            }}
+          >
+            <span className="truncate max-w-[140px]">{activePrompt.title ?? "Custom prompt"}</span>
+            <span className="opacity-60">×</span>
+          </button>
+        )}
+      </div>
+    )}
     </div>
   );
 });
