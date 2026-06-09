@@ -174,6 +174,8 @@ async function* readStream(
           yield { type: "chunk", content: parsed.content };
         } else if (parsed.type === "sources") {
           yield { type: "sources", sources: parsed.sources };
+        } else if (parsed.type === "done") {
+          yield { type: "done", message_id: parsed.message_id };
         } else if (parsed.type === "context_switch_request") {
           yield {
             type: "context_switch_request",
@@ -213,6 +215,21 @@ export async function gradeAnswer(
   });
   if (!res.ok) throw new Error(`Grading failed: ${res.status}`);
   return res.json();
+}
+
+export async function saveQuizAnswer(
+  messageId: string,
+  question: string,
+  studentAnswer: string,
+  correct: boolean,
+  feedback: string,
+): Promise<void> {
+  const res = await fetch(`${SESSIONS_ENDPOINT}/${messageId}/quiz-answer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, student_answer: studentAnswer, correct, feedback }),
+  });
+  if (!res.ok) throw new Error(`Failed to save quiz answer: ${res.status}`);
 }
 
 export async function getOutputFormats(): Promise<OutputFormatPublic[]> {

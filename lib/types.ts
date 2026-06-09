@@ -1,5 +1,12 @@
 export type MessageRole = "user" | "assistant" | "system";
 
+export interface QuizAnswer {
+  question: string;
+  student_answer: string;
+  correct: boolean;
+  feedback: string;
+}
+
 export interface Source {
   material_id: string;
   file_name: string;
@@ -18,6 +25,7 @@ export type StreamEvent =
   | { type: "chunk"; content: string }
   | { type: "sources"; sources: Source[] }
   | { type: "error"; message: string }
+  | { type: "done"; message_id: string }
   | ContextSwitchRequestEvent;
 
 export interface PendingContextSwitch {
@@ -52,6 +60,7 @@ export interface Message {
   content: string;
   sources?: Source[];
   attachments?: AttachmentPublic[];
+  quiz_answers?: QuizAnswer[] | null;
 }
 
 export interface AskRequest {
@@ -87,6 +96,7 @@ export interface MessagePublic {
   created_at: string;
   sources?: Source[];
   attachments: AttachmentPublic[];
+  quiz_answers?: QuizAnswer[] | null;
 }
 
 export interface Material {

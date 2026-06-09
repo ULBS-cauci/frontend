@@ -68,6 +68,7 @@ export default function Chat({ conversationId }: ChatProps) {
           content: m.content,
           sources: m.sources,
           attachments: m.attachments,
+          quiz_answers: m.quiz_answers,
         }));
         setMessages(formatted);
         scrollIntent.current = "bottom";
@@ -178,6 +179,14 @@ export default function Chat({ conversationId }: ChatProps) {
               (s, i, arr) => arr.findIndex(x => x.material_id === s.material_id) === i
             );
             next[next.length - 1] = { ...last, sources: unique };
+            return next;
+          });
+        } else if (event.type === "done") {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            next[next.length - 1] = { ...last, id: event.message_id };
             return next;
           });
         } else if (event.type === "context_switch_request") {

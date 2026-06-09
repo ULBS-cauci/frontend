@@ -86,6 +86,8 @@ export default function MessageList({ messages, onRegenerate, onAttachmentClick,
                     content={msg.content}
                     streaming={isLastAssistant && !!streamingActive}
                     conversationId={conversationId ?? undefined}
+                    messageId={msg.id}
+                    quizAnswers={msg.quiz_answers ?? undefined}
                   />
                 )}
               </div>
