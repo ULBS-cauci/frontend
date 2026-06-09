@@ -1,5 +1,12 @@
 export type MessageRole = "user" | "assistant" | "system";
 
+export interface QuizAnswer {
+  question: string;
+  student_answer: string;
+  correct: boolean;
+  feedback: string;
+}
+
 export interface Source {
   material_id: string;
   file_name: string;
@@ -51,8 +58,8 @@ export interface Message {
   role: MessageRole;
   content: string;
   sources?: Source[];
-  sources?: Source[];
   attachments?: AttachmentPublic[];
+  quiz_answers?: QuizAnswer[] | null;
 }
 
 export interface AskRequest {
@@ -87,8 +94,8 @@ export interface MessagePublic {
   output_format_id: string | null;
   created_at: string;
   sources?: Source[];
-  sources?: Source[];
   attachments: AttachmentPublic[];
+  quiz_answers?: QuizAnswer[] | null;
 }
 
 export interface Material {

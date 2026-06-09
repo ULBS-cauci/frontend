@@ -61,6 +61,7 @@ export default function Chat({ conversationId }: ChatProps) {
           content: m.content,
           sources: m.sources,
           attachments: m.attachments,
+          quiz_answers: m.quiz_answers,
         }));
         setMessages(formatted);
         scrollIntent.current = "bottom";

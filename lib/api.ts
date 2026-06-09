@@ -215,6 +215,21 @@ export async function gradeAnswer(
   return res.json();
 }
 
+export async function saveQuizAnswer(
+  messageId: string,
+  question: string,
+  studentAnswer: string,
+  correct: boolean,
+  feedback: string,
+): Promise<void> {
+  const res = await fetch(`${SESSIONS_ENDPOINT}/${messageId}/quiz-answer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, student_answer: studentAnswer, correct, feedback }),
+  });
+  if (!res.ok) throw new Error(`Failed to save quiz answer: ${res.status}`);
+}
+
 export async function getOutputFormats(): Promise<OutputFormatPublic[]> {
   const res = await fetch(`${SESSIONS_ENDPOINT}/output-formats`);
   if (!res.ok) throw new Error(`Failed to fetch output formats: ${res.status}`);

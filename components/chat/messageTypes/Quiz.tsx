@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { gradeAnswer } from "@/lib/api";
+import { gradeAnswer, saveQuizAnswer } from "@/lib/api";
 import type { MessageRendererProps } from "./rendererTypes";
 import MessageTypePlaceholder from "./MessageTypePlaceholder";
 
@@ -30,7 +30,7 @@ type QuizQuestion = TrueFalse | FreeText | MultipleChoice;
 
 type GradeResult = { correct: boolean; feedback: string };
 
-export default function Quiz({ content, streaming }: MessageRendererProps) {
+export default function Quiz({ content, streaming, messageId, quizAnswers }: MessageRendererProps) {
   const question = useMemo<QuizQuestion | null>(() => {
     try {
       return JSON.parse(content);
@@ -39,10 +39,17 @@ export default function Quiz({ content, streaming }: MessageRendererProps) {
     }
   }, [content]);
 
-  const [selected, setSelected] = useState<string | null>(null);
-  const [inputValue, setInputValue] = useState("");
+  const existingAnswer = useMemo(
+    () => quizAnswers?.find((a) => a.question === question?.question) ?? null,
+    [quizAnswers, question],
+  );
+
+  const [selected, setSelected] = useState<string | null>(existingAnswer?.student_answer ?? null);
+  const [inputValue, setInputValue] = useState(existingAnswer?.student_answer ?? "");
   const [grading, setGrading] = useState(false);
-  const [result, setResult] = useState<GradeResult | null>(null);
+  const [result, setResult] = useState<GradeResult | null>(
+    existingAnswer ? { correct: existingAnswer.correct, feedback: existingAnswer.feedback } : null,
+  );
 
   if (streaming || !question) {
     return <MessageTypePlaceholder content={content} streaming={streaming} />;
@@ -63,6 +70,9 @@ export default function Quiz({ content, streaming }: MessageRendererProps) {
           userAnswer,
         );
         setResult(grade);
+        if (messageId) {
+          saveQuizAnswer(messageId, question.question, userAnswer, grade.correct, grade.feedback).catch(console.error);
+        }
       } catch {
         setResult({ correct: false, feedback: "Could not reach the grading service." });
       } finally {
@@ -73,7 +83,11 @@ export default function Quiz({ content, streaming }: MessageRendererProps) {
         question.kind === "true_false"
           ? userAnswer === String(question.answer)
           : userAnswer === question.answer;
-      setResult({ correct, feedback: question.explanation });
+      const gradeResult = { correct, feedback: question.explanation };
+      setResult(gradeResult);
+      if (messageId) {
+        saveQuizAnswer(messageId, question.question, userAnswer, gradeResult.correct, gradeResult.feedback).catch(console.error);
+      }
     }
   };
 

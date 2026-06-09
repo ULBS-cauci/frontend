@@ -2,17 +2,22 @@
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import { MESSAGE_RENDERERS } from "./messageTypes/registry";
+import type { QuizAnswer } from "@/lib/types";
 
 interface Props {
   content: string;
   streaming?: boolean;
   conversationId?: string;
+  messageId?: string;
+  quizAnswers?: QuizAnswer[];
 }
 
 export default function MarkdownMessage({
   content,
   streaming = false,
   conversationId,
+  messageId,
+  quizAnswers,
 }: Props) {
   const components: Components = {
     // Strip the outer <pre> — registered block renderers own their container;
@@ -27,7 +32,7 @@ export default function MarkdownMessage({
       if (Renderer) {
         const raw = String(children ?? "").replace(/\n$/, "");
         return (
-          <Renderer content={raw} streaming={streaming} conversationId={conversationId} />
+          <Renderer content={raw} streaming={streaming} conversationId={conversationId} messageId={messageId} quizAnswers={quizAnswers} />
         );
       }
       if (lang) {
