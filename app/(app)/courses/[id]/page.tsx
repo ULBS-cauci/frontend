@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getCourse, getMaterials, uploadMaterial, getMaterialPreviewUrl } from "@/lib/api";
+import { getCourse, getMaterials, uploadMaterial, getMaterialPreviewUrl, listLearningPaths, deleteLearningPath } from "@/lib/api";
 import FilePreview from "@/components/FilePreview";
-import type { Course, Material } from "@/lib/types";
+import type { Course, Material, LearningPath } from "@/lib/types";
 
 export default function CoursePage() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +14,7 @@ export default function CoursePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [paths, setPaths] = useState<LearningPath[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -42,7 +43,20 @@ export default function CoursePage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+    listLearningPaths()
+      .then((all) => setPaths(all.filter((p) => p.course_id === id)))
+      .catch(() => {});
   }, [id]);
+
+  async function handleDeletePath(pathId: string) {
+    const previous = paths;
+    setPaths((prev) => prev.filter((p) => p.id !== pathId));
+    try {
+      await deleteLearningPath(pathId);
+    } catch {
+      setPaths(previous);
+    }
+  }
 
   if (loading) {
     return (
@@ -156,6 +170,41 @@ export default function CoursePage() {
               })
             )}
           </div>
+
+          {paths.length > 0 && (
+            <div className="shrink-0 flex flex-col gap-2 border-t border-white/[0.06] pt-3 max-h-64 overflow-y-auto">
+              <span className="text-xs text-white/40 uppercase tracking-widest font-medium px-1">
+                Learning paths · {paths.length}
+              </span>
+              {paths.map((p) => {
+                const total = p.modules.length;
+                const done = Object.values(p.progress).filter(Boolean).length;
+                return (
+                  <div
+                    key={p.id}
+                    className="group w-full rounded-xl p-3 flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-colors"
+                  >
+                    <button
+                      onClick={() => router.push(`/learning-paths/${p.id}`)}
+                      className="flex-1 min-w-0 text-left"
+                    >
+                      <span className="text-sm font-medium text-white/80 truncate block">{p.title}</span>
+                      <span className="text-[11px] text-white/35">{done}/{total} complete</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeletePath(p.id)}
+                      aria-label="Delete learning path"
+                      className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-[#f87171] transition-all shrink-0"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 rounded-3xl p-[1px] shrink-0 flex flex-col" style={{ background: "linear-gradient(135deg, rgba(124,106,247,0.5) 0%, rgba(96,165,250,0.2) 50%, rgba(124,106,247,0.1) 100%)" }}>

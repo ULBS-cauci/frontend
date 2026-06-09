@@ -137,3 +137,31 @@ export interface UserSettingsUpdate {
   custom_system_prompt?: string | null;
   selected_system_prompt_id?: string | null;
 }
+
+export type LearningPathModuleAction = "ask_tutor" | "generate_quiz";
+
+export interface LearningPathModule {
+  id: string;
+  title: string;
+  objectives: string[];
+  summary: string | null;
+  material_ids: string[];
+  suggested_action: LearningPathModuleAction | null;
+}
+
+export interface LearningPath {
+  id: string;
+  user_id: string;
+  course_id: string;
+  title: string;
+  modules: LearningPathModule[];
+  progress: Record<string, boolean>;
+  created_at: string;
+  updated_at: string;
+}
+
+// SSE events emitted by POST /learning-paths/generate (distinct from chat StreamEvent).
+export type LearningPathStreamEvent =
+  | { type: "status"; message: string }
+  | { type: "error"; message: string }
+  | { type: "learning_path_done"; learning_path_id: string };

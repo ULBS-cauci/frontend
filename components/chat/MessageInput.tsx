@@ -24,6 +24,7 @@ interface Props {
   disabled?: boolean;
   isGenerating?: boolean;
   onStop?: () => void;
+  onGenerateLearningPath?: () => void;
 }
 
 export interface MessageInputHandle {
@@ -82,10 +83,10 @@ function Check() {
 }
 
 const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput(
-  { onSubmit, disabled, isGenerating, onStop }: Props,
+  { onSubmit, disabled, isGenerating, onStop, onGenerateLearningPath }: Props,
   ref,
 ) {
-  const { outputFormats, activeConvId, convPrefs, setConvPref } = useChatContext();
+  const { outputFormats, activeConvId, convPrefs, setConvPref, selectedCourseId } = useChatContext();
   const prefKey = activeConvId ?? "__new__";
   const outputFormatId = convPrefs[prefKey]?.outputFormatId ?? "";
   const convPromptId = convPrefs[prefKey]?.promptId;
@@ -340,6 +341,21 @@ const MessageInput = forwardRef<MessageInputHandle, Props>(function MessageInput
                   </svg>
                   Upload a document
                 </button>
+
+                {/* Generate learning path — only when a course is selected */}
+                {selectedCourseId && onGenerateLearningPath && (
+                  <button
+                    type="button"
+                    onClick={() => { closeMenu(); onGenerateLearningPath(); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-[14px] text-[rgba(232,228,240,0.85)] hover:bg-[rgba(232,228,240,0.07)] transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="6" cy="19" r="2" /><circle cx="18" cy="5" r="2" />
+                      <path d="M6 17V9a4 4 0 0 1 4-4h4" /><polyline points="14 2 18 5 14 8" />
+                    </svg>
+                    Generate learning path
+                  </button>
+                )}
 
                 {/* Customise → system prompt submenu */}
                 <div
