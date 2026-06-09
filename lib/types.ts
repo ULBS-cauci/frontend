@@ -25,6 +25,7 @@ export type StreamEvent =
   | { type: "chunk"; content: string }
   | { type: "sources"; sources: Source[] }
   | { type: "error"; message: string }
+  | { type: "done"; message_id: string }
   | ContextSwitchRequestEvent;
 
 export interface PendingContextSwitch {

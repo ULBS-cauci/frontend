@@ -171,6 +171,14 @@ export default function Chat({ conversationId }: ChatProps) {
             next[next.length - 1] = { ...last, sources: unique };
             return next;
           });
+        } else if (event.type === "done") {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (!last) return next;
+            next[next.length - 1] = { ...last, id: event.message_id };
+            return next;
+          });
         } else if (event.type === "context_switch_request") {
           setMessages((prev) => prev.slice(0, -1));
           setPendingSwitch({
