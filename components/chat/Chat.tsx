@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl, getCourse } from "@/lib/api";
+import { askStream, regenerateStream, getMessages, createConversation, getAttachmentDownloadUrl, getCourse, generateLearningPathStream } from "@/lib/api";
 import type { AttachmentPublic, Message, MessagePublic, MessageRole, PendingContextSwitch } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput, { type MessageInputHandle } from "./MessageInput";
@@ -41,6 +41,18 @@ export default function Chat({ conversationId }: ChatProps) {
   // renders after streaming ends) grows the page, without yanking a user who scrolled up.
   const stickToBottom = useRef(true);
   const [previewing, setPreviewing] = useState<AttachmentPublic | null>(null);
+  const [pathGenStatus, setPathGenStatus] = useState<string | null>(null);
+  const [pathGenError, setPathGenError] = useState<string | null>(null);
+  const promptPrefilled = useRef(false);
+  const pathGenAbortRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight learning-path generation when the chat unmounts, so the
+  // stream stops and we don't setState / navigate after teardown.
+  useEffect(() => {
+    return () => {
+      pathGenAbortRef.current?.abort();
+    };
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -89,8 +101,10 @@ export default function Chat({ conversationId }: ChatProps) {
   useEffect(() => {
     const urlCourseId = searchParams.get("course_id");
     const urlCourseName = searchParams.get("course_name");
-    if (urlCourseId && urlCourseName) {
-      setSelectedCourse(urlCourseId, urlCourseName);
+    // Scope to the course as soon as we have an id; the name is best-effort
+    // (it may be empty if the originating page failed to load the course title).
+    if (urlCourseId) {
+      setSelectedCourse(urlCourseId, urlCourseName || null);
       return;
     }
 
@@ -112,6 +126,46 @@ export default function Chat({ conversationId }: ChatProps) {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [conversationId, conversations, setSelectedCourse, searchParams]);
+
+  // Prefill the composer when arriving from a learning-path module action
+  // (?prompt=...). One-shot — does not auto-send, so a refresh won't resubmit.
+  useEffect(() => {
+    if (promptPrefilled.current) return;
+    const prompt = searchParams.get("prompt");
+    if (prompt) {
+      promptPrefilled.current = true;
+      inputRef.current?.restore(prompt, []);
+    }
+  }, [searchParams]);
+
+  const handleGenerateLearningPath = async () => {
+    if (!selectedCourseId || pathGenStatus !== null) return;
+    setPathGenError(null);
+    setPathGenStatus("Starting...");
+    const controller = new AbortController();
+    pathGenAbortRef.current = controller;
+    try {
+      for await (const event of generateLearningPathStream(selectedCourseId, controller.signal)) {
+        if (event.type === "status") {
+          setPathGenStatus(event.message);
+        } else if (event.type === "learning_path_done") {
+          pathGenAbortRef.current = null;
+          router.push(`/learning-paths/${event.learning_path_id}`);
+          return;
+        }
+      }
+      // Stream ended without a done event (e.g. server-side error event).
+      setPathGenStatus(null);
+    } catch (err) {
+      // A user-triggered abort (e.g. navigating away) should not surface an error.
+      if (!controller.signal.aborted) {
+        setPathGenError(err instanceof Error ? err.message : "Failed to generate learning path");
+        setPathGenStatus(null);
+      }
+    } finally {
+      if (pathGenAbortRef.current === controller) pathGenAbortRef.current = null;
+    }
+  };
 
   const handleAsk = async (
     query: string,
@@ -413,7 +467,37 @@ export default function Chat({ conversationId }: ChatProps) {
   }, [messages.length]);
 
   return (
-    <div className="h-full bg-[#0c0b10] text-[#e8e4f0] flex">
+    <div className="relative h-full bg-[#0c0b10] text-[#e8e4f0] flex">
+      {/* Learning-path generation overlay */}
+      {(pathGenStatus !== null || pathGenError) && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0c0b10]/80 backdrop-blur-sm">
+          <div className="w-[360px] rounded-2xl border border-[rgba(167,139,250,0.25)] bg-[#141219] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.6)]">
+            {pathGenError ? (
+              <>
+                <p className="text-[#f87171] text-sm mb-4">{pathGenError}</p>
+                <button
+                  type="button"
+                  onClick={() => setPathGenError(null)}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-white/70 text-sm transition-colors"
+                >
+                  Close
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-3">
+                <svg className="animate-spin shrink-0 text-[#a78bfa]" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                <div>
+                  <p className="text-sm text-[#e8e4f0] font-medium">Generating learning path</p>
+                  <p className="text-[13px] text-white/50 mt-0.5">{pathGenStatus}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Chat pane — full width with no preview, half width when PDF is open */}
       <div className={`${previewing ? "w-1/2" : "w-full"} flex items-center justify-center px-6 py-10`}>
         <div className="w-full max-w-4xl h-full flex flex-col overflow-hidden">
@@ -471,6 +555,7 @@ export default function Chat({ conversationId }: ChatProps) {
               disabled={loading || streaming}
               isGenerating={streaming}
               onStop={handleStop}
+              onGenerateLearningPath={handleGenerateLearningPath}
             />
           </div>
         </div>

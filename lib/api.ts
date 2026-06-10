@@ -1,5 +1,5 @@
 import { config } from "./config";
-import { AskRequest, AttachmentPublic, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material, StreamEvent, OutputFormatPublic, SystemPromptSummary, UserSettings, UserSettingsUpdate } from "./types";
+import { AskRequest, AttachmentPublic, Conversation, MessagePublic, Course, CourseCreate, CourseUpdate, Material, StreamEvent, OutputFormatPublic, SystemPromptSummary, UserSettings, UserSettingsUpdate, LearningPath, LearningPathStreamEvent } from "./types";
 
 const SESSIONS_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/sessions`;
 const ASK_ENDPOINT = `${SESSIONS_ENDPOINT}/ask`;
@@ -7,6 +7,7 @@ const ATTACHMENT_UPLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments/upload`;
 const ATTACHMENT_DOWNLOAD_ENDPOINT = `${SESSIONS_ENDPOINT}/attachments`;
 const COURSES_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/courses`;
 const USER_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/user`;
+const LEARNING_PATHS_ENDPOINT = `${config.apiUrl}${config.apiPrefix}/learning-paths`;
 
 export function getAttachmentDownloadUrl(attachmentId: string): string {
   return `${ATTACHMENT_DOWNLOAD_ENDPOINT}/${encodeURIComponent(attachmentId)}`;
@@ -285,4 +286,96 @@ export async function* regenerateStream(
   }
 
   yield* readStream(response, signal);
+}
+
+// ----------------------------------------------------------------- learning paths
+export async function* generateLearningPathStream(
+  courseId: string,
+  signal?: AbortSignal,
+): AsyncIterable<LearningPathStreamEvent> {
+  const response = await fetch(`${LEARNING_PATHS_ENDPOINT}/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ course_id: courseId }),
+    signal,
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Backend returned ${response.status}: ${await response.text()}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  // Cancelling the reader on abort closes the connection so the backend stops
+  // generating, and unblocks an in-flight reader.read() during a navigation away.
+  const onAbort = () => {
+    reader.cancel().catch(() => {});
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+
+  try {
+    while (true) {
+      if (signal?.aborted) break;
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+      for (const event of events) {
+        if (signal?.aborted) break;
+        if (!event.startsWith("data: ")) continue;
+        const data = event.slice(6);
+        if (data === "[DONE]") return;
+        const parsed = JSON.parse(data);
+        if (parsed.type === "status") {
+          yield { type: "status", message: parsed.message };
+        } else if (parsed.type === "learning_path_done") {
+          yield { type: "learning_path_done", learning_path_id: parsed.learning_path_id };
+        } else if (parsed.type === "error") {
+          throw new Error(parsed.message);
+        }
+      }
+    }
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    reader.cancel().catch(() => {});
+  }
+
+  // Surface the abort so the caller can stop without treating it as completion.
+  if (signal?.aborted) {
+    throw new DOMException("Stream aborted.", "AbortError");
+  }
+}
+
+export async function listLearningPaths(): Promise<LearningPath[]> {
+  const res = await fetch(`${LEARNING_PATHS_ENDPOINT}/`);
+  if (!res.ok) throw new Error(`Failed to fetch learning paths: ${res.status}`);
+  return res.json();
+}
+
+export async function getLearningPath(pathId: string): Promise<LearningPath> {
+  const res = await fetch(`${LEARNING_PATHS_ENDPOINT}/${pathId}`);
+  if (!res.ok) throw new Error(`Failed to fetch learning path: ${res.status}`);
+  return res.json();
+}
+
+export async function updateLearningPathProgress(
+  pathId: string,
+  moduleId: string,
+  completed: boolean,
+): Promise<LearningPath> {
+  const res = await fetch(`${LEARNING_PATHS_ENDPOINT}/${pathId}/progress`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ module_id: moduleId, completed }),
+  });
+  if (!res.ok) throw new Error(`Failed to update progress: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteLearningPath(pathId: string): Promise<void> {
+  const res = await fetch(`${LEARNING_PATHS_ENDPOINT}/${pathId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to delete learning path: ${res.status}`);
 }
