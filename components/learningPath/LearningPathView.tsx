@@ -50,7 +50,9 @@ export default function LearningPathView({ pathId }: Props) {
   }, [pathId]);
 
   const completedCount = useMemo(
-    () => (path ? Object.values(path.progress).filter(Boolean).length : 0),
+    // Count only modules that still exist, so a stale progress key can't push the
+    // count (and the percentage) above the module total.
+    () => (path ? path.modules.filter((m) => path.progress[m.id]).length : 0),
     [path],
   );
 

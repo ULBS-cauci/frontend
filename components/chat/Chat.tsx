@@ -44,6 +44,15 @@ export default function Chat({ conversationId }: ChatProps) {
   const [pathGenStatus, setPathGenStatus] = useState<string | null>(null);
   const [pathGenError, setPathGenError] = useState<string | null>(null);
   const promptPrefilled = useRef(false);
+  const pathGenAbortRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight learning-path generation when the chat unmounts, so the
+  // stream stops and we don't setState / navigate after teardown.
+  useEffect(() => {
+    return () => {
+      pathGenAbortRef.current?.abort();
+    };
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -92,8 +101,10 @@ export default function Chat({ conversationId }: ChatProps) {
   useEffect(() => {
     const urlCourseId = searchParams.get("course_id");
     const urlCourseName = searchParams.get("course_name");
-    if (urlCourseId && urlCourseName) {
-      setSelectedCourse(urlCourseId, urlCourseName);
+    // Scope to the course as soon as we have an id; the name is best-effort
+    // (it may be empty if the originating page failed to load the course title).
+    if (urlCourseId) {
+      setSelectedCourse(urlCourseId, urlCourseName || null);
       return;
     }
 
@@ -131,11 +142,14 @@ export default function Chat({ conversationId }: ChatProps) {
     if (!selectedCourseId || pathGenStatus !== null) return;
     setPathGenError(null);
     setPathGenStatus("Starting...");
+    const controller = new AbortController();
+    pathGenAbortRef.current = controller;
     try {
-      for await (const event of generateLearningPathStream(selectedCourseId)) {
+      for await (const event of generateLearningPathStream(selectedCourseId, controller.signal)) {
         if (event.type === "status") {
           setPathGenStatus(event.message);
         } else if (event.type === "learning_path_done") {
+          pathGenAbortRef.current = null;
           router.push(`/learning-paths/${event.learning_path_id}`);
           return;
         }
@@ -143,8 +157,13 @@ export default function Chat({ conversationId }: ChatProps) {
       // Stream ended without a done event (e.g. server-side error event).
       setPathGenStatus(null);
     } catch (err) {
-      setPathGenError(err instanceof Error ? err.message : "Failed to generate learning path");
-      setPathGenStatus(null);
+      // A user-triggered abort (e.g. navigating away) should not surface an error.
+      if (!controller.signal.aborted) {
+        setPathGenError(err instanceof Error ? err.message : "Failed to generate learning path");
+        setPathGenStatus(null);
+      }
+    } finally {
+      if (pathGenAbortRef.current === controller) pathGenAbortRef.current = null;
     }
   };
 

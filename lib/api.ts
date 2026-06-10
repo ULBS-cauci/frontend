@@ -307,14 +307,24 @@ export async function* generateLearningPathStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+
+  // Cancelling the reader on abort closes the connection so the backend stops
+  // generating, and unblocks an in-flight reader.read() during a navigation away.
+  const onAbort = () => {
+    reader.cancel().catch(() => {});
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+
   try {
     while (true) {
+      if (signal?.aborted) break;
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       const events = buffer.split("\n\n");
       buffer = events.pop() ?? "";
       for (const event of events) {
+        if (signal?.aborted) break;
         if (!event.startsWith("data: ")) continue;
         const data = event.slice(6);
         if (data === "[DONE]") return;
@@ -329,7 +339,13 @@ export async function* generateLearningPathStream(
       }
     }
   } finally {
+    signal?.removeEventListener("abort", onAbort);
     reader.cancel().catch(() => {});
+  }
+
+  // Surface the abort so the caller can stop without treating it as completion.
+  if (signal?.aborted) {
+    throw new DOMException("Stream aborted.", "AbortError");
   }
 }
 
