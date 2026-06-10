@@ -76,14 +76,16 @@ export default function LearningPathView({ pathId }: Props) {
 
   const startModuleChat = (module: LearningPathModule, kind: "ask_tutor" | "generate_quiz") => {
     if (!path) return;
-    const prompt =
-      kind === "generate_quiz"
-        ? `Creează un test pentru a-mi verifica cunoștințele despre „${module.title}”.`
-        : `Teach me about "${module.title}". ${module.objectives.join(" ")}`;
     if (kind === "generate_quiz") {
       const quiz = outputFormats.find((f) => f.name === "quiz");
       if (quiz) setConvPref("__new__", { outputFormatId: quiz.id });
     }
+    // Build the prompt from the module's own title and objectives, which were generated
+    // in the course's language — so the tutor replies in that language too. For quizzes
+    // the quiz output format supplies the "generate a quiz" instruction, so the message
+    // only needs to carry the (course-language) topic.
+    const topic = `${module.title}. ${module.objectives.join(" ")}`.trim();
+    const prompt = kind === "generate_quiz" ? topic : `${module.title}\n\n${module.objectives.join("\n")}`;
     const params = new URLSearchParams({
       course_id: path.course_id,
       course_name: courseTitle,

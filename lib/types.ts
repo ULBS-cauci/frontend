@@ -154,6 +154,7 @@ export interface LearningPath {
   user_id: string;
   course_id: string;
   title: string;
+  language: string | null;
   modules: LearningPathModule[];
   progress: Record<string, boolean>;
   created_at: string;
