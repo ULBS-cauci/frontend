@@ -78,7 +78,7 @@ export default function LearningPathView({ pathId }: Props) {
     if (!path) return;
     const prompt =
       kind === "generate_quiz"
-        ? `Create a quiz to test me on "${module.title}".`
+        ? `Creează un test pentru a-mi verifica cunoștințele despre „${module.title}”.`
         : `Teach me about "${module.title}". ${module.objectives.join(" ")}`;
     if (kind === "generate_quiz") {
       const quiz = outputFormats.find((f) => f.name === "quiz");
